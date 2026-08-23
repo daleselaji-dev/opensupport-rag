@@ -116,6 +116,7 @@ Verified locally:
 - `docs/17-v1-agent-eval.md`, `scripts/agent_eval.py`: V1 controlled Agent preflight; public API remains locked by `AGENT_ENABLED=false`.
 - `evals/customer_support_benchmark_v0.2.json`: versioned customer-support benchmark seed with answer/refuse-or-escalate actions, source URLs, risk slices and forbidden claims.
 - `versions/`: stage-specific assembly manifests for V0.1 Dense, V0.2 Hybrid, V0.3 Intent + Metadata, optional V0.4 Reranker, production RAG and controlled Agent.
+- Public repository checkpoint: https://github.com/daleselaji-dev/opensupport-rag ; latest CI run is green after adding a clean-runner pytest install.
 
 ## Required review output
 
