@@ -74,6 +74,11 @@
 - 证据：本机已写入 223 Complaint、112 Source、802 structured relationships；top issue/product 查询成功。
 - 决定：保留为可选 Support Intelligence 模块，等待专门 Golden Set；不替换默认客服 RAG。
 
+## V1 受控 Agent 预验收（仍锁定）
+
+- 隔离端口临时开启 `AGENT_ENABLED=true`，真实 API 生成 PostgreSQL `pending_approval` 草稿并完成一次人工批准；Trace 包含 `tool_search_guidance`、`tool_search_complaints`、`build_ticket_draft` 和 `human_approval_gate`。
+- 临时实例已关闭，公开端口仍返回 423；没有发送客服消息、写外部 CRM、承诺退款或作法律判断。
+
 ## V0.8：PDF Page Baseline（未晋级）
 
 - 真实问题：PDF 表格/图表和页码在纯文本 RAG 中可能丢失。
