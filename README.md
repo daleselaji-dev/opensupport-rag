@@ -1,5 +1,7 @@
 # OpenSupport RAG
 
+[![CI](https://github.com/daleselaji-dev/opensupport-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/daleselaji-dev/opensupport-rag/actions/workflows/ci.yml)
+
 An inspectable, local-first customer-support RAG project. It starts with a real
 CFPB data foundation and grows from Dense RAG to Hybrid, Reranked, hierarchical,
 graph, multimodal and production RAG. The first query path remains small enough
