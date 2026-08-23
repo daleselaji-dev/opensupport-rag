@@ -54,6 +54,7 @@ def build_lifecycle(
     corrective_eval = _read_report("eval_latest_v0_6_hybrid.json")
     reranker_ablation = _read_report("reranker_ablation_latest.json")
     stability = _read_report("stability_latest.json")
+    security = _read_report("security_audit_latest.json")
     agent_eval = _read_report("agent_eval_latest.json")
     release_check = _read_report("release_check_latest.json")
     golden_review = review_status()
@@ -254,7 +255,7 @@ def build_lifecycle(
                 "status": "in_progress" if production_checks_pass else "locked",
                 "status_label": "实现与运行演练已完成 · Golden Review 阻塞发布" if production_checks_pass and golden_review_pending else "等待纯 RAG 质量门",
                 "scope": "增量同步 · 缓存 · 队列 · Trace · 监控 · 蓝绿索引/回滚",
-                "evidence": f"Postgres/MinIO/Redis/OTel、缓存、限流、蓝绿索引和回滚已实现；稳定性错误率={stability.get('error_rate', '—')}；安全审计 findings={_read_report('security_audit_latest.json').get('findings', '—')}",
+                "evidence": f"Postgres/MinIO/Redis/OTel、缓存、限流、蓝绿索引和回滚已实现；稳定性错误率={stability.get('error_rate', '—')}；安全 findings={security.get('findings', '—')}（隔离注入={security.get('isolated_prompt_injection_findings', '—')}，未隔离={security.get('unisolated_prompt_injection_findings', '—')}，私有 PII={security.get('pii_findings', '—')}）",
                 "gate": "更新不阻断查询；索引失败可回滚；稳定性/安全测试通过",
                 "next_action": "完成 Golden Review 后再生成发布候选；保持 release_check 全部 Gate 可复现",
             },
