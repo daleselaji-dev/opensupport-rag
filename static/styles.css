@@ -297,6 +297,13 @@ input:focus, textarea:focus, select:focus, button:focus-visible, a:focus-visible
 .agent-result .agent-missing li { margin: 5px 0; color: #4b5260; }
 .agent-result .agent-draft pre { margin-top: 10px; background: #101218; color: #dfe2ff; }
 .contextual-action { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+.review-status { display: grid; gap: 10px; margin-top: 14px; }
+.review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.review-stat { padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.58); }
+.review-stat span { display: block; color: var(--muted); font-size: .74rem; }
+.review-stat strong { display: block; margin-top: 5px; font: 700 1rem ui-monospace, SFMono-Regular, Consolas, monospace; }
+.review-instructions { padding: 13px 15px; border: 1px dashed rgba(75,67,232,.35); border-radius: 14px; background: var(--accent-soft); color: #4e5361; line-height: 1.55; }
+@media (max-width: 700px) { .review-summary { grid-template-columns: 1fr; } }
 .example-question, .version-button { border: 1px solid var(--line); background: rgba(255,255,255,.6); color: var(--ink); }
 .example-question:hover, .version-button:hover { color: var(--accent); background: var(--accent-soft); }
 .version-button.selected { background: var(--accent); color: white; border-color: var(--accent); }

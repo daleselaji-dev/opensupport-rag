@@ -23,10 +23,11 @@ from app.reranker import RerankerUnavailable
 from app.rate_limit import SlidingWindowLimiter
 from app.graph import GraphStore
 from app.celery_app import celery_app
+from app.golden_review import record_signoff, review_status
 from app.storage import SourceOfTruthStore
 from app.observability import configure_otel, metrics_payload, observe_request, tracer
 from app.frontier import frontier_modules
-from app.schemas import AgentRequest, AgentResponse, IndexActivationRequest, IngestRequest, IngestResponse, LocalIngestRequest, QueryRequest, QueryResponse, RetrievalPreviewResponse, TraceEvent
+from app.schemas import AgentRequest, AgentResponse, GoldenReviewSignoffRequest, IndexActivationRequest, IngestRequest, IngestResponse, LocalIngestRequest, QueryRequest, QueryResponse, RetrievalPreviewResponse, TraceEvent
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "static"
@@ -106,6 +107,19 @@ async def health():
 @app.get("/api/eval/last")
 async def eval_last():
     return load_last_eval() or {"status": "not_run", "message": "尚未运行 V0.2 seed retrieval eval。"}
+
+
+@app.get("/api/eval/golden-review")
+async def golden_review_status():
+    return review_status()
+
+
+@app.post("/api/eval/golden-review/signoff")
+async def golden_review_signoff(request: GoldenReviewSignoffRequest):
+    try:
+        return record_signoff(request.role, request.reviewer, request.approved_case_ids, request.notes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/data-quality")

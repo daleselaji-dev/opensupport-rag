@@ -24,6 +24,10 @@ def main() -> None:
     contextual = read_json(ROOT / "reports" / "eval_latest_v0_5_hybrid.json")
     stability = read_json(ROOT / "reports" / "stability_latest.json")
     golden_draft = read_json(ROOT / "evals" / "customer_support_benchmark_v0.3.json")
+    review_signoffs = read_json(ROOT / "data" / "golden_review_signoffs.json")
+    reviewers = review_signoffs.get("reviewers", [])
+    benchmark_ids = {str(item.get("case_id")) for item in read_json(ROOT / "evals" / "customer_support_benchmark_v0.3.json").get("cases", [])}
+    review_approved = len({str(item.get("reviewer")) for item in reviewers if item.get("reviewer")}) >= 2 and all(benchmark_ids.issubset(set(item.get("approved_case_ids", []))) for item in reviewers[:2])
     checks = [
         {"key": "complaints", "actual": quality.get("source_types", {}).get("complaint", 0), "target": 200, "passed": quality.get("source_types", {}).get("complaint", 0) >= 200},
         {"key": "duplicates", "actual": quality.get("duplicate_documents", "missing"), "target": 0, "passed": quality.get("duplicate_documents") == 0},
@@ -32,7 +36,7 @@ def main() -> None:
         {"key": "answer_eval", "actual": answer.get("overall_passed", False), "target": True, "passed": answer.get("overall_passed", False) is True},
         {"key": "contextual_eval", "actual": contextual.get("metrics", {}).get("hit_at_3", 0), "target": 0.9, "passed": contextual.get("metrics", {}).get("hit_at_3", 0) >= 0.9},
         {"key": "stability_error_rate", "actual": stability.get("error_rate", "missing"), "target": 0.01, "passed": isinstance(stability.get("error_rate"), (int, float)) and stability.get("error_rate", 1) <= 0.01},
-        {"key": "golden_review", "actual": golden_draft.get("review_status", "missing"), "target": "approved", "passed": golden_draft.get("review_status") == "approved"},
+        {"key": "golden_review", "actual": "approved" if review_approved else golden_draft.get("review_status", "missing"), "target": "approved", "passed": review_approved},
     ]
     result = {"release_ready": all(check["passed"] for check in checks), "checks": checks, "note": "Release readiness is blocked until every gate passes; a strong retrieval score cannot override data or answer-safety failures."}
     reports = ROOT / "reports"

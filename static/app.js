@@ -38,6 +38,8 @@ const agentForm = document.querySelector('#agent-form');
 const agentResult = document.querySelector('#agent-result');
 const buildContextualButton = document.querySelector('#build-contextual');
 const contextualStatus = document.querySelector('#contextual-status');
+const reviewStatus = document.querySelector('#review-status');
+const refreshReview = document.querySelector('#refresh-review');
 let manualVersionSelection = false;
 
 if (agentForm) {
@@ -64,6 +66,23 @@ if (buildContextualButton) {
     }
   });
 }
+
+function renderGoldenReview(payload) {
+  if (!reviewStatus) return;
+  const reviewers = payload?.reviewers || [];
+  reviewStatus.innerHTML = `<div class="review-summary"><article class="review-stat"><span>案例总数</span><strong>${text(payload?.case_count || 0)}</strong></article><article class="review-stat"><span>不同 Reviewer</span><strong>${text(payload?.distinct_reviewer_count || 0)} / 2</strong></article><article class="review-stat"><span>Release Gate</span><strong>${payload?.approved ? 'APPROVED' : 'PENDING'}</strong></article></div><div class="review-summary">${reviewers.map((item) => `<article class="review-stat"><span>${text(item.role || 'reviewer')}</span><strong>${text(item.reviewer || '未签名')}</strong><small>${text(item.approved_count)} / ${text(payload?.case_count || 0)} cases · missing ${text(item.missing_count)}</small></article>`).join('')}</div><div class="review-instructions">审核流程：运行 <code>python -m scripts.audit_benchmark</code> → 两位 reviewer 分别检查 source URL、source type、拒答边界和中英标签 → 通过 API/Review Center 写入 signoff。没有两位独立复核者时，状态保持 PENDING。</div>`;
+}
+
+async function loadGoldenReview() {
+  if (!reviewStatus) return;
+  try {
+    const response = await fetch('/api/eval/golden-review');
+    renderGoldenReview(await response.json());
+  } catch (error) {
+    reviewStatus.innerHTML = `<p class="error">无法读取复核状态：${text(error.message)}</p>`;
+  }
+}
+if (refreshReview) refreshReview.addEventListener('click', loadGoldenReview);
 
 const versionCatalog = {
   v0_1: {label: 'V0.1 Dense', delta: 'V0.1 只有 Qwen Embedding + Qdrant Dense + 双证据；没有 BM25、RRF、Intent 或 Metadata 过滤。', diagram: 'v0_1'},
@@ -573,6 +592,7 @@ answerEvalRun.addEventListener('click', async () => {
 });
 
 loadStatus();
+loadGoldenReview();
 
 ingestForm.addEventListener('submit', async (event) => {
   event.preventDefault();

@@ -334,3 +334,10 @@ class IndexActivationRequest(BaseModel):
     collection: str = Field(min_length=1, max_length=200)
     sparse_collection: str = Field(min_length=1, max_length=200)
     reason: str = Field(default="manual_activation", min_length=3, max_length=300)
+
+
+class GoldenReviewSignoffRequest(BaseModel):
+    role: Literal["reviewer_a", "reviewer_b"]
+    reviewer: str = Field(min_length=2, max_length=120)
+    approved_case_ids: list[str] = Field(default_factory=list, max_length=100)
+    notes: str = Field(default="", max_length=2000)
