@@ -204,6 +204,7 @@ The health endpoint reports LM Studio availability, loaded/visible model IDs, Qd
 
 Read [docs/07-data-foundation.md](docs/07-data-foundation.md) before changing the ingestion pipeline.
 Read [docs/16-release-checklist.md](docs/16-release-checklist.md) before calling the repository production-ready or writing resume metrics.
+The live workbench Review Center documents the two-person Golden Set signoff required before V1 unlock.
 
 ## Release readiness audit
 
