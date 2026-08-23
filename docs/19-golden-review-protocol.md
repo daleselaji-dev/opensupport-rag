@@ -21,6 +21,16 @@ $env:PYTHONPATH = "."
 原始 URL，判断来源是否真的支持问题、来源类型是否完整、拒答边界是否安全，再提交完整
 `case_id` 集合；不能只看自动 Hit@k 或 URL 是否相关。
 
+提交工具（只有 reviewer 完成独立审阅后才能使用）：
+
+```powershell
+$env:PYTHONPATH = "."
+.\.venv\Scripts\python.exe scripts\signoff_golden_review.py --role reviewer_a --reviewer "Reviewer A" --all-cases --notes "逐条检查完成"
+.\.venv\Scripts\python.exe scripts\signoff_golden_review.py --role reviewer_b --reviewer "Reviewer B" --all-cases --notes "独立复核完成"
+```
+
+`--all-cases` 是显式承诺，不是自动批准开关；脚本不会替 reviewer 判断证据。
+
 API：
 
 - `GET /api/eval/golden-review`
