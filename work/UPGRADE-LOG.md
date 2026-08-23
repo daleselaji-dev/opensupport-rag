@@ -74,6 +74,13 @@
 - 证据：本机已写入 223 Complaint、112 Source、802 structured relationships；top issue/product 查询成功。
 - 决定：保留为可选 Support Intelligence 模块，等待专门 Golden Set；不替换默认客服 RAG。
 
+## V0.8：PDF Page Baseline（未晋级）
+
+- 真实问题：PDF 表格/图表和页码在纯文本 RAG 中可能丢失。
+- 当前施工：`app/multimodal.py` 支持本地 PDF 页级文本、页码和 SHA256 元数据，写入隔离 V0.8 集合。
+- 外部事实：CFPB PDF CDN 当前返回 403，无法把下载失败伪装成已完成视觉数据集；视觉区域检索仍待真实 PDF 和页面级 Golden Set。
+- 决定：保留代码和明确的 400/424 错误边界，暂不把 V0.8 设为默认。
+
 ## 生产硬化增量
 
 - 真实问题：重复查询浪费 Embedding 调用；模型并发或卡住会拖垮本地服务；Reranker 长批次曾返回 500。

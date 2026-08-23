@@ -116,8 +116,14 @@ def validate_document(document: SourceDocument) -> list[DataQualityIssue]:
     if document.source_type == "complaint" and not document.complaint_id:
         issues.append(DataQualityIssue(code="complaint_id_missing", severity="error", message="投诉 Chunk 缺少 complaint_id", chunk_id=document.chunk_id, source_url=document.source_url))
     safety = scan_text(document.text)
-    if safety["pii_flags"]:
-        issues.append(DataQualityIssue(code="pii_detected", severity="error", message=f"内容疑似包含敏感信息：{', '.join(safety['pii_flags'])}", chunk_id=document.chunk_id, source_url=document.source_url))
+    # Official guidance may intentionally publish a CFPB help-desk phone
+    # number. Treat that as a reviewable public-contact pattern; complaint
+    # narratives and private identifiers remain quarantine-worthy.
+    private_flags = [flag for flag in safety["pii_flags"] if flag != "phone" or document.source_type == "complaint"]
+    if private_flags:
+        issues.append(DataQualityIssue(code="pii_detected", severity="error", message=f"内容疑似包含敏感信息：{', '.join(private_flags)}", chunk_id=document.chunk_id, source_url=document.source_url))
+    elif safety["pii_flags"]:
+        issues.append(DataQualityIssue(code="public_contact_pattern", severity="warning", message="官方来源包含可能的公开联系电话，需人工确认其为公共联系信息", chunk_id=document.chunk_id, source_url=document.source_url))
     if safety["prompt_injection_flags"]:
         issues.append(DataQualityIssue(code="prompt_injection_content", severity="warning", message="内容包含疑似提示注入指令，生成时必须视为不可信文本", chunk_id=document.chunk_id, source_url=document.source_url))
     return issues
