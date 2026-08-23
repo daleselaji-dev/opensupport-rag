@@ -30,9 +30,15 @@ class Settings(BaseSettings):
     native_sparse_enabled: bool = True
     guidance_top_k: int = 3
     complaint_top_k: int = 3
-    chat_max_tokens: int = 1200
+    # The answer contract is at most three bullets; keep local R1 latency
+    # bounded instead of spending the whole context on hidden verbosity.
+    chat_max_tokens: int = 600
     max_context_chars: int = 1000
-    citation_repair_max_tokens: int = 500
+    citation_repair_max_tokens: int = 300
+    # A second local LLM call improves formatting in some cases but can break
+    # the end-to-end p95 budget. Production defaults to deterministic grounded
+    # fallback; enable this only as an evaluated experiment.
+    citation_repair_enabled: bool = False
     min_citation_coverage: float = 0.8
     # V0.4 is an explicit opt-in experiment.  Keep the optional Cross-Encoder
     # out of the baseline path until the frozen benchmark proves a ranking

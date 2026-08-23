@@ -19,6 +19,10 @@ Hybrid Hit@3 `0.975`、MRR `0.8792`；V0.5 Contextual Hit@3 `0.975`、MRR `0.895
 生成错误/超时均为 `0`；10 次稳定性 smoke 错误率 `0`；私有 PII `0`、未隔离 Prompt Injection `0`。
 这些数字仍不能替代人工 Citation Support。
 
+端到端本地 p95 目标也已纳入 `release_check.py`：默认 Citation Repair 关闭、grounded
+fallback 开启时完整 50-case p95=`13,118.83ms`，目标 `20,000ms`，通过。打开二次 LLM
+Citation Repair 会使 p95 上升到 `23,038.79ms`，因此只保留为显式实验配置。
+
 面试叙事必须按：
 
 ```text

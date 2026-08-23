@@ -1191,6 +1191,8 @@ Answer to edit:
         # the repaired answer still cannot pass deterministic checks.
         repair_trigger = "invalid_or_missing_citation" if not citation_valid else "citation_coverage"
         if (
+            self.settings.citation_repair_enabled
+            and
             answer != "模型没有返回文本。"
             and not initial_quality["safety_flags"]
             and (not citation_valid or initial_quality["citation_coverage"] < self.settings.min_citation_coverage)

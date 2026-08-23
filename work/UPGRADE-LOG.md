@@ -89,6 +89,7 @@
 - 升级：加入 `detect_request_risks` 和 `request_safety_gate`，对退款/结果承诺、法律结论、账户动作、PII/隐藏数据、ATM 操作和提示注入在 LLM 前直接拒答/转人工。
 - 复测：完整 50-case V0.6 Answer Eval citation validity=1.0、citation coverage=1.0、refusal correctness=1.0、forbidden claims=0、answer errors/timeouts=0、p95=26,758.29ms。
 - 另一个真实故障：单条 R1 卡住会拖住整轮 Eval；增加每案例 timeout，超时计为失败并继续，不能用平均分隐藏。
+- SLA 对照：600/300 token 预算仍使完整 50-case p95=23,038.79ms；关闭默认二次 Citation Repair、保留 grounded fallback 后，完整集质量不变且 p95 降至 13,118.83ms，达到 ≤20s 门。Citation Repair 仍可通过实验配置显式打开，不进入默认生产链路。
 
 ## V0.7 Graph 重建（2026-08-24）
 
