@@ -1,0 +1,19 @@
+Execution Roadmap
+
+Week 1: Build Basic RAG Loop - document upload - parsing - chunking -
+embedding - vector retrieval - generation - citation
+
+Week 2: Advanced Retrieval - benchmark baseline - BM25 - hybrid
+retrieval - RRF fusion - reranker - metadata filtering - query rewrite
+
+Week 3: Evaluation and Self Improvement - golden dataset - Recall@K -
+MRR - faithfulness - citation accuracy - failure taxonomy - regression
+testing - feedback loop
+
+Week 4: Production Engineering - ACL permission - document versioning -
+incremental indexing - async pipeline - caching - observability -
+deployment
+
+Week 5+: Differentiation - adaptive retrieval agent - knowledge gap
+discovery - self optimization loop - optional GraphRAG - experiment
+reports

@@ -1,0 +1,19 @@
+Interview Positioning
+
+Avoid: “I built a RAG chatbot.”
+
+Use: “I built an adaptive enterprise knowledge intelligence platform.”
+
+Key discussion points:
+
+1.  Retrieval quality Hybrid retrieval + reranking.
+
+2.  Evaluation Offline benchmark and regression testing.
+
+3.  Production readiness ACL, versioning, incremental indexing, tracing.
+
+4.  System thinking RAG is treated as a knowledge infrastructure
+    problem, not only an LLM prompt problem.
+
+Possible future discussion: - Agentic RAG - Graph-enhanced retrieval -
+Context engineering - Self-improving AI systems

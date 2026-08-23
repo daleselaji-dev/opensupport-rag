@@ -1,0 +1,16 @@
+Technology Decisions
+
+Backend: - Python - FastAPI
+
+Storage: - PostgreSQL for metadata/business state - Qdrant for vector
+database - Elasticsearch for sparse retrieval - Redis for cache/task
+queue
+
+AI: - BGE embedding family - BGE reranker - LLM Gateway supporting
+OpenAI-compatible APIs and domestic models
+
+Deployment: - Docker Compose first
+
+Design principles: - avoid vendor lock-in - separate AI capabilities
+behind interfaces - optimize for experimentation and interview
+demonstration

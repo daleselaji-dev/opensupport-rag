@@ -1,0 +1,13 @@
+Instructions for Next Agent
+
+Continue from this project state.
+
+Do not restart research from zero.
+
+The next useful tasks: 1. Continue differentiation design. 2. Freeze
+implementation details. 3. Create development milestones. 4. Review
+architecture tradeoffs. 5. Help implement and document experiments.
+
+Maintain the core philosophy: Build a real enterprise AI system, not a
+demo. Every feature should have: - business problem - engineering
+reason - evaluation method - interview explanation

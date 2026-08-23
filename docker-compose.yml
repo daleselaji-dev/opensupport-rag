@@ -1,0 +1,155 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.17.0
+    ports:
+      - "16333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["core"]
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_DB: opensupport
+      POSTGRES_USER: opensupport
+      POSTGRES_PASSWORD: opensupport
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opensupport -d opensupport"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    profiles: ["core"]
+    command: server /data --console-address ":9001"
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    environment:
+      MINIO_ROOT_USER: opensupport
+      MINIO_ROOT_PASSWORD: opensupport-dev-secret
+    volumes:
+      - minio_data:/data
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["core"]
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  worker:
+    build:
+      context: .
+      args:
+        INSTALL_RERANKER: ${INSTALL_RERANKER:-false}
+    profiles: ["core"]
+    command: celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=1
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      POSTGRES_URL: postgresql+psycopg://opensupport:opensupport@postgres:5432/opensupport
+      MINIO_ENDPOINT: minio:9000
+      STORAGE_PROBE_ENABLED: "true"
+      TRACE_PERSISTENCE_ENABLED: "true"
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_ENDPOINT: http://otel-collector:4318
+      RERANKER_BASE_URL: ${DOCKER_RERANKER_BASE_URL}
+      NEO4J_URL: bolt://host.docker.internal:17687
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observability"]
+    ports:
+      - "19090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    profiles: ["observability"]
+    ports:
+      - "13001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "14317:4317"
+      - "14318:4318"
+    volumes:
+      - ./infra/otel-collector.yml:/etc/otelcol-contrib/config.yaml:ro
+
+  neo4j:
+    image: neo4j:5.26-community
+    profiles: ["graph"]
+    ports:
+      - "17474:7474"
+      - "17687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/opensupport-dev-password
+    volumes:
+      - neo4j_data:/data
+
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_RERANKER: ${INSTALL_RERANKER:-false}
+    profiles: ["core"]
+    env_file: .env
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      CHAT_BASE_URL: ${DOCKER_LM_STUDIO_BASE_URL}
+      EMBEDDING_BASE_URL: ${DOCKER_EMBEDDING_BASE_URL}
+      POSTGRES_URL: postgresql+psycopg://opensupport:opensupport@postgres:5432/opensupport
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: opensupport
+      MINIO_SECRET_KEY: opensupport-dev-secret
+      REDIS_URL: redis://redis:6379/0
+      TRUTH_SOURCE_REQUIRED: "true"
+      STORAGE_PROBE_ENABLED: "true"
+      TRACE_PERSISTENCE_ENABLED: "true"
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_ENDPOINT: http://otel-collector:4318
+      RERANKER_BASE_URL: ${DOCKER_RERANKER_BASE_URL}
+      NEO4J_URL: bolt://host.docker.internal:17687
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+      - postgres
+      - minio
+      - redis
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+
+volumes:
+  qdrant_data:
+  postgres_data:
+  minio_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  neo4j_data:

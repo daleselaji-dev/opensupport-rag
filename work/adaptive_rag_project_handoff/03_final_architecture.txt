@@ -1,0 +1,15 @@
+Architecture Overview
+
+User | API Gateway | RAG Controller | +—————————–+ | | Knowledge
+Platform Retrieval Engine | | Parser Query Router Chunker Hybrid Search
+Metadata Reranker Versioning Context Builder ACL | Storage Layer
+
+Generation: LLM Gateway Prompt Builder Citation Validation
+
+Quality Layer: Evaluation Benchmark Regression Testing
+
+Production Layer: Tracing Metrics Logging Security
+
+Architecture principles: - modular monolith first - future service
+extraction possible - model/provider abstraction - evaluation as a
+first-class component

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenSupport RAG · CFPB Complaint Demo</title>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">OPENSUPPORT / RAG CONTROL ROOM</p>
+          <h1>证据先行。<br><span>回答可追溯。</span></h1>
+          <p class="lede">一个面向客服运营的双语 RAG 工作台。输入真实问题，观察检索、证据、模型和安全门如何逐步运行。</p>
+          <div class="hero-meta"><span class="hero-chip">REAL CFPB DATA</span><span class="hero-chip">V0.0 → V1.0</span><span class="hero-chip">TRACEABLE BY DEFAULT</span></div>
+          <nav class="hero-nav" aria-label="快速导航"><a href="#query-console">直接提问</a><a href="#workbench">装配版本</a><a href="#eval-center">客观 Eval</a><a href="#trace-anchor">运行 Trace</a></nav>
+        </div>
+        <div class="hero-ascii" aria-label="RAG architecture preview">
+          <div class="ascii-label">SYSTEM / FLOW_01</div>
+          <pre>┌──────────────┐
+│   QUESTION   │
+└──────┬───────┘
+       │ embed
+┌──────▼───────┐   ┌────────────┐
+│  RETRIEVAL   │──▶│  EVIDENCE  │
+│ dense + BM25 │   │ [S]  [C]   │
+└──────┬───────┘   └─────┬──────┘
+       │ trace             │ ground
+       └──────────┬────────┘
+                  ▼
+            ┌──────────┐
+            │ R1 + GATE│
+            └──────────┘</pre>
+          <div class="ascii-foot">LOCAL / EXPLAINABLE / FAIL-CLOSED</div>
+        </div>
+      </header>
+
+      <section class="card status-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LIVE STATUS</p>
+            <h2>现在系统到底有没有在工作？</h2>
+          </div>
+          <button id="refresh-status" type="button" class="secondary-button">刷新状态</button>
+        </div>
+        <div id="status-grid" class="status-grid"><p class="hint">正在读取 LM Studio、Qdrant、索引和最近一次 Eval…</p></div>
+        <div class="quick-start">
+          <strong>建议按这个顺序操作</strong>
+          <span>① 先看服务状态 → ② 运行 Eval → ③ 选择 Dense/Hybrid 查询 → ④ 展开 Trace 步骤</span>
+        </div>
+      </section>
+
+      <section class="card lifecycle-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">RAG EVOLUTION</p>
+            <h2>从基础 RAG 到生产型 RAG</h2>
+          </div>
+          <span id="current-stage" class="stage-pill">读取阶段…</span>
+        </div>
+        <p id="lifecycle-principle" class="hint">每一阶段都必须先通过自己的质量门，才允许进入下一阶段。</p>
+        <div id="lifecycle-grid" class="lifecycle-grid"><p class="hint">正在读取项目阶段…</p></div>
+      </section>
+
+      <section class="card data-foundation-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">V0.0 DATA FOUNDATION</p>
+            <h2>数据从原始来源怎样变成可检索证据</h2>
+          </div>
+          <span id="data-quality-status" class="stage-pill">读取数据质量…</span>
+        </div>
+        <p class="hint">Postgres/MinIO 是真相源，Qdrant 是派生索引。每一次摄取都会生成快照、Hash、去重和隔离结果；失败项不会静默进入 RAG。</p>
+        <div id="data-pipeline" class="data-pipeline"><p class="hint">尚未生成 Data Quality 报告。</p></div>
+        <div id="data-quality-summary" class="data-quality-summary"></div>
+        <div class="contextual-action"><button id="build-contextual" type="button" class="secondary-button">构建 V0.5 Contextual 索引</button><span id="contextual-status" class="hint">会创建隔离的 parent-child Dense/Sparse 集合，不覆盖当前版本。</span></div>
+      </section>
+
+      <section id="workbench" class="card workbench-card">
+        <div class="workbench-main">
+          <div class="section-heading">
+          <div>
+            <p class="eyebrow">COMPONENT WORKBENCH</p>
+            <h2>组件是怎样组装的</h2>
+          </div>
+          <span class="status-pill">当前阶段：纯 RAG · Agent 已锁定</span>
+          </div>
+          <div class="version-selector" aria-label="选择 RAG 装配版本">
+            <span>装配版本：</span>
+            <button type="button" class="version-button" data-version="v0_1">V0.1 Dense</button>
+            <button type="button" class="version-button" data-version="v0_2">V0.2 Hybrid</button>
+            <button type="button" class="version-button selected" data-version="v0_3">V0.3 Intent + Metadata</button>
+            <button type="button" class="version-button" data-version="v0_4">V0.4 Cross-Encoder 实验</button>
+            <button type="button" class="version-button" data-version="v0_5">V0.5 Contextual / Parent-Child</button>
+            <button type="button" class="version-button" data-version="v0_6">V0.6 Adaptive / Corrective</button>
+            <button type="button" class="version-button" data-version="v0_8">V0.8 PDF Page Baseline</button>
+          </div>
+          <div id="version-delta" class="version-delta">V0.3 新增：意图识别、audience/source URL Metadata 过滤，以及对应 Trace。</div>
+          <div id="pipeline" class="pipeline" aria-label="OpenSupport RAG component assembly">
+          <button type="button" class="pipeline-node" data-component="query_received"><span>01</span><strong>问题</strong><small>中文/英文输入</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node optional" data-component="route_intent"><span>01a</span><strong>意图识别</strong><small>客服 Intent</small></button>
+          <button type="button" class="pipeline-node optional" data-component="metadata_filter"><span>01b</span><strong>Metadata</strong><small>范围过滤</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node" data-component="embed_query"><span>02</span><strong>Embedding</strong><small>Qwen3 · 向量</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node" data-component="retrieve_guidance"><span>03</span><strong>官方检索</strong><small>CFPB / Regulation</small></button>
+          <button type="button" class="pipeline-node optional" data-component="bm25_guidance"><span>03b</span><strong>BM25</strong><small>精确词项</small></button>
+          <button type="button" class="pipeline-node" data-component="retrieve_complaints"><span>04</span><strong>案例检索</strong><small>真实投诉</small></button>
+          <button type="button" class="pipeline-node optional" data-component="bm25_complaints"><span>04b</span><strong>BM25</strong><small>错误码/术语</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node optional" data-component="fusion_rrf"><span>04c</span><strong>RRF</strong><small>合并排名</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node" data-component="assemble_context"><span>05</span><strong>上下文</strong><small>[S#] + [C#]</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node" data-component="generate_answer"><span>06</span><strong>LLM</strong><small>DeepSeek-R1</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node optional" data-component="repair_citations"><span>07a</span><strong>R1 引用修复</strong><small>缺失时补引</small></button>
+          <span class="pipeline-arrow" aria-hidden="true">→</span>
+          <button type="button" class="pipeline-node" data-component="validate_citations"><span>07</span><strong>校验</strong><small>引用 / 边界</small></button>
+          </div>
+          <div id="component-inspector" class="component-inspector" aria-live="polite">
+            <strong>组件检查器</strong><p>点击上面的任意组件，查看它的输入、输出、依赖和当前 Trace 状态。</p>
+          </div>
+          <p class="hint">点击组件可在查询后定位对应 Trace 步骤；Embedding 只做语义表示，Qdrant 只做召回，LLM 不应越过证据边界。</p>
+        </div>
+        <aside class="architecture-rail" aria-label="RAG architecture diagrams">
+          <div class="diagram-card" data-version="v0_1">
+            <p class="eyebrow">V0.1 BASELINE</p>
+            <h3>普通 RAG 结构图</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="embed_query"><strong>Embedding</strong><small>Qwen → vector</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="retrieve_guidance"><strong>官方检索</strong><small>Qdrant / S#</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="retrieve_complaints"><strong>案例检索</strong><small>Qdrant / C#</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>上下文</strong><small>Evidence prompt</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>Chat LLM</strong><small>Answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="validate_citations"><strong>引用校验</strong><small>Guardrail</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card upgraded-diagram" data-version="v0_2">
+            <p class="eyebrow">V0.2 UPGRADE</p>
+            <h3>升级后的结构图</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="embed_query"><strong>Embedding</strong><small>Dense vector</small><em>未运行</em></button>
+              <div class="diagram-branch"><button class="diagram-node" data-component="retrieve_dense_guidance"><strong>Dense 官方</strong><small>semantic</small><em>未运行</em></button><button class="diagram-node" data-component="bm25_guidance"><strong>BM25 官方</strong><small>exact terms</small><em>未运行</em></button></div>
+              <div class="diagram-branch"><button class="diagram-node" data-component="retrieve_dense_complaints"><strong>Dense 案例</strong><small>semantic</small><em>未运行</em></button><button class="diagram-node" data-component="bm25_complaints"><strong>BM25 案例</strong><small>exact terms</small><em>未运行</em></button></div>
+              <span class="diagram-arrow">↓</span><button class="diagram-node" data-component="fusion_rrf"><strong>RRF 融合</strong><small>rank fusion</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>上下文</strong><small>Evidence prompt</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>Chat LLM</strong><small>Answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="repair_citations"><strong>R1 引用修复</strong><small>repair pass</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="validate_citations"><strong>引用校验</strong><small>Guardrail</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card v03-diagram" data-version="v0_3">
+            <p class="eyebrow">V0.3 NEXT</p>
+            <h3>问题导向结构图</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="route_intent"><strong>意图识别</strong><small>rule baseline</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="metadata_filter"><strong>Metadata 过滤</strong><small>audience / URL family</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="embed_query"><strong>Embedding</strong><small>Qwen vector</small><em>未运行</em></button>
+              <div class="diagram-branch"><button class="diagram-node" data-component="retrieve_dense_guidance"><strong>Dense 官方</strong><small>filtered</small><em>未运行</em></button><button class="diagram-node" data-component="bm25_guidance"><strong>BM25 官方</strong><small>filtered</small><em>未运行</em></button></div>
+              <span class="diagram-arrow">↓</span><button class="diagram-node" data-component="fusion_rrf"><strong>RRF 融合</strong><small>compare before/after</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>上下文</strong><small>evidence</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>DeepSeek-R1</strong><small>bounded answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="validate_citations"><strong>引用校验</strong><small>quality gate</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card upgraded-diagram" data-version="v0_4">
+            <p class="eyebrow">V0.4 EXPERIMENT</p>
+            <h3>高召回候选 → Cross-Encoder 精排</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="route_intent"><strong>意图 + 过滤</strong><small>route / metadata</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <div class="diagram-branch"><button class="diagram-node" data-component="retrieve_dense_guidance"><strong>Dense 官方</strong><small>candidate-50</small><em>未运行</em></button><button class="diagram-node" data-component="bm25_guidance"><strong>Sparse 官方</strong><small>candidate-50</small><em>未运行</em></button></div>
+              <span class="diagram-arrow">↓</span><button class="diagram-node" data-component="fusion_rrf"><strong>RRF 候选集</strong><small>high recall</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="rerank_candidates"><strong>Cross-Encoder</strong><small>bge-reranker-v2-m3</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>Top-3/3 上下文</strong><small>ranked evidence</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>DeepSeek-R1</strong><small>bounded answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="guardrail_review"><strong>引用/安全门</strong><small>fail closed</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card upgraded-diagram" data-version="v0_5">
+            <p class="eyebrow">V0.5 CONTEXT</p>
+            <h3>父文档身份 → 子 Chunk 检索</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="contextual_backend"><strong>Contextual Index</strong><small>title + metadata</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <div class="diagram-branch"><button class="diagram-node" data-component="retrieve_dense_guidance"><strong>Dense 子 Chunk</strong><small>parent-aware</small><em>未运行</em></button><button class="diagram-node" data-component="bm25_guidance"><strong>Sparse 子 Chunk</strong><small>parent-aware</small><em>未运行</em></button></div>
+              <span class="diagram-arrow">↓</span><button class="diagram-node" data-component="fusion_rrf"><strong>RRF</strong><small>candidate set</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="expand_parent"><strong>父身份扩展</strong><small>title / source / child index</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>预算上下文</strong><small>dedupe + evidence</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>DeepSeek-R1</strong><small>bounded answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="guardrail_review"><strong>引用/安全门</strong><small>fail closed</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card upgraded-diagram" data-version="v0_6">
+            <p class="eyebrow">V0.6 ADAPTIVE</p>
+            <h3>证据评分 → 一次纠错 → 停止</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="adaptive_route"><strong>Adaptive Route</strong><small>budget = 1 retry</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="evidence_grade"><strong>Evidence Grade</strong><small>official + score</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="query_translation"><strong>Query Variant</strong><small>known terms only</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="corrective_retry"><strong>Corrective Retry</strong><small>retry once / stop</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>Evidence Context</strong><small>grounded prompt</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>DeepSeek-R1</strong><small>bounded answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="guardrail_review"><strong>引用/安全门</strong><small>fail closed</small><em>未运行</em></button>
+            </div>
+          </div>
+          <div class="diagram-card upgraded-diagram" data-version="v0_8">
+            <p class="eyebrow">V0.8 PDF BASELINE</p>
+            <h3>PDF 页面 → 页码证据</h3>
+            <div class="diagram-flow">
+              <button class="diagram-node" data-component="query_received"><strong>问题</strong><small>Query</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="pdf_backend"><strong>PDF Pages</strong><small>text baseline</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="embed_query"><strong>Embedding</strong><small>page vectors</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="fusion_rrf"><strong>Dense + Sparse</strong><small>page-level candidates</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="assemble_context"><strong>页码上下文</strong><small>page metadata</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="generate_answer"><strong>DeepSeek-R1</strong><small>cited answer</small><em>未运行</em></button><span class="diagram-arrow">↓</span>
+              <button class="diagram-node" data-component="guardrail_review"><strong>引用/安全门</strong><small>fail closed</small><em>未运行</em></button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="card frontier-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">FRONTIER MODULE GATE</p>
+            <h2>现代 RAG 模块为什么能进入项目</h2>
+          </div>
+          <span class="status-pill">先理解 · 再实验 · 最后接入</span>
+        </div>
+        <p class="hint">每个前沿模块都绑定问题假设、官方/论文来源、Trace 变化、成本和进入 Gate。planned/locked 代表尚未证明，不代表把它当作默认组件。</p>
+        <div id="frontier-grid" class="frontier-grid"><p class="hint">正在读取前沿模块目录…</p></div>
+      </section>
+
+      <section class="card upgrade-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">UPGRADE CONTROL</p>
+            <h2>升级台：先证明问题，再升级组件</h2>
+          </div>
+          <span class="status-pill">先通过数据与质量门</span>
+        </div>
+        <div class="upgrade-grid">
+          <article class="upgrade-step current"><span>当前 V0.0</span><strong>Data Foundation</strong><p>来源 → 清洗 → Hash → 去重 → 隔离 → 快照；先证明数据可信和可重建。</p></article>
+          <article class="upgrade-step next"><span>下一步 V0.1/V0.2</span><strong>Dense → Hybrid</strong><p>在同一数据快照上比较 Dense、Sparse/BM25 和 RRF，不把组件数量当作质量。</p></article>
+          <article class="upgrade-step later"><span>当前 V0.3</span><strong>Intent + Metadata</strong><p>识别客服意图，再过滤 audience 和官方 URL family，修复流程问题互相误召回。</p></article>
+          <article class="upgrade-step later"><span>后续 V0.4+</span><strong>Rerank → Context → Production</strong><p>只有 Eval 证明必要时，才增加重排、层级上下文、纠错、队列、监控和回滚。</p></article>
+        </div>
+        <p class="hint">工作台中的每个 Gate 都有实际值、目标值和失败说明。失败不是坏事，它告诉我们下一项必须升级哪一层。</p>
+      </section>
+
+      <section class="card setup">
+        <div>
+          <h2>第一步：导入真实投诉</h2>
+          <p>导入真实 CFPB 信用卡投诉，并抓取 CFPB 官方指导；LM Studio 生成 Embedding，Qdrant 保存两类证据。</p>
+        </div>
+        <form id="ingest-form">
+          <label>数量 <input id="limit" type="number" value="200" min="1" max="1000" /></label>
+          <label>年份 <input id="year" type="number" value="2024" min="2011" max="2030" /></label>
+          <button type="submit">导入并建立向量索引</button>
+        </form>
+        <pre id="ingest-status">尚未导入数据。</pre>
+      </section>
+
+      <section id="eval-center" class="card eval-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">OBJECTIVE EVAL</p>
+            <h2>V0.2 Seed Eval：检索是否真的变好？</h2>
+          </div>
+          <div class="eval-controls"><label>评测数据<select id="eval-benchmark"><option value="v0_2" selected>V0.2 Seed · 10 cases</option><option value="v0_3">V0.3 Golden Draft · 50 cases</option></select></label><label>评测装配<select id="eval-version"><option value="v0_1">V0.1 Dense</option><option value="v0_2">V0.2 Hybrid</option><option value="v0_3" selected>V0.3 Intent + Metadata</option><option value="v0_4">V0.4 Hybrid + Cross-Encoder</option><option value="v0_5">V0.5 Contextual / Parent-Child</option><option value="v0_6">V0.6 Adaptive / Corrective</option><option value="v0_8">V0.8 PDF Page Baseline</option></select></label><label>检索策略<select id="eval-mode"><option value="dense">Dense baseline</option><option value="hybrid">Native Sparse Hybrid + RRF</option></select></label><button id="eval-run" type="button">运行此版本测试</button></div>
+        </div>
+        <p class="hint">8 个中英文问题绑定 CFPB 官方真实 URL；只测检索和数据质量，不让 LLM 自评，也不把生成耗时混进检索指标。V0.2 Hybrid 当前使用 Qdrant 原生 Sparse/BM25；Dense 与 Hybrid 必须同集对照。</p>
+        <div id="eval-summary"><p class="hint">尚未运行。运行后会显示 Gate、实际指标、失败案例和每个评测问题的检索 Trace。</p></div>
+        <div class="answer-eval-controls"><button id="answer-eval-run" type="button" class="secondary-button">运行回答/安全 Eval</button><span class="hint">会调用本地 R1；回答通过不了引用支持或安全门时，系统会 fail-closed。</span></div>
+        <div id="answer-eval-summary"><p class="hint">尚未运行回答 Eval。</p></div>
+      </section>
+
+      <section class="card standards-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ENTERPRISE EVAL LADDER</p>
+            <h2>企业会认可什么样的 Eval？</h2>
+          </div>
+          <span class="status-pill">不是只看一个分数</span>
+        </div>
+        <p class="hint">当前的 8 条 seed 是早期回归集，不会被包装成“企业上线证明”。企业验收需要从数据、检索、回答、安全、运营和业务结果逐层通过。</p>
+        <div id="standards-grid" class="standards-grid"><p class="hint">正在读取 Eval 标准…</p></div>
+      </section>
+
+      <section id="query-console" class="card query-console">
+          <h2>直接提出一个投诉问题</h2>
+          <p>可中文或英文提问。请使用真实情形的改写，不要输入个人账户、卡号或身份证明信息。</p>
+        <div class="example-row" aria-label="真实问题示例">
+          <span class="example-label">真实问题示例：</span>
+          <button type="button" class="example-question" data-question="我发现信用卡有一笔陌生扣款，客服应该先确认哪些信息？">陌生扣款</button>
+          <button type="button" class="example-question" data-question="我想向 CFPB 提交消费投诉，官方流程是什么？">提交投诉流程</button>
+          <button type="button" class="example-question" data-question="信用卡账单金额有错误，我需要按什么流程处理？">账单错误</button>
+        </div>
+        <form id="query-form">
+          <textarea id="question" required minlength="10">我发现信用卡上有一笔我不认识的消费，联系银行后没有收到明确处理结果。我应该先让客服核查哪些信息？</textarea>
+          <label>测试装配版本
+            <select id="query-version">
+              <option value="v0_1">V0.1 Dense 基线</option>
+              <option value="v0_2">V0.2 Dense + BM25 + RRF</option>
+              <option value="v0_3" selected>V0.3 Intent + Metadata</option>
+              <option value="v0_4">V0.4 Hybrid + Cross-Encoder（实验）</option>
+              <option value="v0_5">V0.5 Contextual / Parent-Child（需先构建索引）</option>
+              <option value="v0_6">V0.6 Adaptive / Corrective（最多一次重试）</option>
+              <option value="v0_8">V0.8 PDF Page Baseline（需先导入 PDF）</option>
+            </select>
+          </label>
+          <label>检索策略
+            <select id="retrieval-mode">
+              <option value="dense">Dense baseline（当前 V0.1）</option>
+              <option value="hybrid">Hybrid：Dense + Qdrant Sparse/BM25 + RRF（V0.2 实验）</option>
+            </select>
+          </label>
+          <input id="assembly-version" type="hidden" value="v0_3" />
+          <div class="query-actions"><button type="button" id="preview-button" class="secondary-button">只运行检索 Trace</button><button type="submit">检索证据并由 LLM 生成回答</button></div>
+        </form>
+      </section>
+
+      <section id="agent-console" class="card agent-console">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">V1.0 / CONTROLLED AGENT</p>
+            <h2>信息补全 → 工单草稿 → 人工审批</h2>
+          </div>
+          <span class="status-pill">不发送消息 · 不写 CRM</span>
+        </div>
+        <p class="hint">这是 V1 的受控升级：Agent 只调用白名单检索工具，并把结构化草稿暂停在人工审批门。输入请勿包含卡号、邮箱或身份证号。</p>
+        <form id="agent-form">
+          <textarea id="agent-message" required minlength="10" placeholder="例如：我发现信用卡上有一笔陌生扣款，联系银行后还没有明确处理结果……"></textarea>
+          <div class="agent-fields">
+            <label>金额（可选）<input id="agent-amount" maxlength="40" placeholder="例如 25–40 美元" /></label>
+            <label>大致日期（可选）<input id="agent-date" maxlength="40" placeholder="例如 2026-08-20" /></label>
+            <label>商户（可选）<input id="agent-merchant" maxlength="160" placeholder="不要填写卡号" /></label>
+            <label>此前处理（可选）<input id="agent-actions" maxlength="500" placeholder="例如 已联系发卡机构" /></label>
+          </div>
+          <button id="agent-submit" type="submit" disabled>V1 锁定：先完成 V0.4–V0.9</button>
+        </form>
+        <div id="agent-result" class="agent-result" aria-live="polite"><p class="hint">运行后显示缺失字段、工具轨迹和待审批草稿。</p></div>
+      </section>
+
+      <section id="result" class="hidden">
+        <section class="card">
+          <h2>RAG 回答</h2>
+          <article id="answer"></article>
+          <p id="guardrail" class="guardrail"></p>
+        </section>
+        <section class="card">
+          <h2>检索到的真实证据</h2>
+          <p class="hint">[S] 为 CFPB 官方指导或法规；[C] 为未经 CFPB 核实的公开消费者投诉。分数越高，语义越相近。</p>
+          <div id="sources" class="source-grid"></div>
+        </section>
+        <section id="trace-anchor" class="card trace-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">RUNTIME TRACE</p>
+              <h2>这一次查询实际发生了什么</h2>
+            </div>
+            <span id="trace-id" class="trace-id"></span>
+          </div>
+          <div id="execution-status" class="execution-status" aria-live="polite">尚未开始执行。</div>
+          <div id="trace" class="trace-list" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

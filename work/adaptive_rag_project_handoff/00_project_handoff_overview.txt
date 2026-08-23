@@ -1,0 +1,11 @@
+Adaptive Enterprise Knowledge Intelligence Platform Project Handoff
+Package
+
+Purpose: This package is a handoff document for another AI agent. It
+summarizes the project direction, decisions, architecture, execution
+plan, and important context developed during the conversation.
+
+Important note: This package contains a structured summary of the
+conversation and design decisions. It does not contain private
+chain-of-thought or hidden reasoning. It contains only reusable project
+context, conclusions, plans, and engineering artifacts.

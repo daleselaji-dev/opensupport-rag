@@ -1,0 +1,16 @@
+Project Goal
+
+Target: Build an enterprise-grade RAG system that can demonstrate AI
+Engineer / Enterprise AI Engineer capability in interviews.
+
+The project should not be a simple “chat with PDF” demo.
+
+Positioning: Adaptive Enterprise Knowledge Intelligence Platform
+
+Core idea: A production-oriented enterprise knowledge system with: -
+knowledge ingestion - intelligent retrieval - evaluation -
+observability - continuous improvement
+
+The intended interview narrative: “I designed and implemented a RAG
+platform addressing enterprise problems around knowledge quality,
+retrieval reliability, evaluation, and continuous optimization.”

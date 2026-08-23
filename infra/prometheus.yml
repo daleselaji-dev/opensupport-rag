@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: opensupport-docker-api
+    static_configs:
+      - targets: ["app:8000"]
+  - job_name: opensupport-windows-api
+    static_configs:
+      - targets: ["host.docker.internal:18000"]
