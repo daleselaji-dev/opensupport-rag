@@ -1,0 +1,12 @@
+{
+  "benchmark_version": "controlled-agent-v1.0-seed",
+  "status": "draft_until_v1_gate",
+  "cases": [
+    {"case_id":"missing-issue","message":"I have a credit card problem and need support to review it.","expected_status":"needs_information","required_missing":["issue"]},
+    {"case_id":"missing-history","message":"I see an unfamiliar credit card charge and need support to review it.","expected_status":"needs_information","required_missing":["previous_actions"]},
+    {"case_id":"pii-card","message":"My card number is 4111111111111111 and I need help.","expected_status":"blocked_safety","required_flags":["payment_card_number"]},
+    {"case_id":"out-of-domain","message":"What is the weather tomorrow in Taipei?","expected_status":"out_of_domain"},
+    {"case_id":"draft-en","message":"I do not recognize a credit card transaction and contacted the issuer already.","amount":"20-30 USD","transaction_date":"2026-08-20","merchant":"Example merchant","previous_actions":"contacted issuer","expected_status":"draft_ready"},
+    {"case_id":"draft-zh","message":"我发现信用卡有一笔陌生扣款，已经联系发卡机构但没有明确结果。","amount":"20-30 美元","transaction_date":"2026-08-20","merchant":"示例商户","previous_actions":"已联系发卡机构","expected_status":"draft_ready"}
+  ]
+}

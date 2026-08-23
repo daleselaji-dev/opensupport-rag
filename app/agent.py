@@ -137,7 +137,8 @@ class ComplaintAgent:
             f"路由到 {route.intent}，置信度 {route.confidence:.2f}",
             {"intent": route.intent, "confidence": route.confidence, "audience": route.audience},
         )
-        if route.audience == "out_of_domain":
+        support_context = any(term in request.message.lower() for term in ("support", "customer", "credit card", "charge", "transaction", "complaint", "客服", "投诉", "信用卡", "扣款"))
+        if route.audience == "out_of_domain" or (route.audience == "unknown" and not support_context):
             _event(trace, "agent_stop", "问题不在客服投诉范围内，转人工判断", {"reason": "out_of_domain"}, "failed")
             return AgentResponse(
                 trace_id=trace_id,

@@ -192,6 +192,7 @@ The health endpoint reports LM Studio availability, loaded/visible model IDs, Qd
 - V0.5: deterministic contextual/parent-child index; V0.6: bounded corrective retrieval; V0.7–V0.8: optional structured Graph and multimodal page experiments.
 - V0.9: production RAG operations and rollback.
 - V1.0: controlled Agent after production RAG quality and safety gates pass.
+- V1 Agent preflight exists at `scripts/agent_eval.py`, but `AGENT_ENABLED=false` keeps the public endpoint locked until V0.9 and human review gates pass.
 
 Read [docs/07-data-foundation.md](docs/07-data-foundation.md) before changing the ingestion pipeline.
 Read [docs/16-release-checklist.md](docs/16-release-checklist.md) before calling the repository production-ready or writing resume metrics.
