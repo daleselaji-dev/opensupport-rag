@@ -73,6 +73,12 @@ DeepSeek-R1 generates a cited answer**.
 
    It adds PostgreSQL (`15432`), MinIO (`19000`), Redis (`16379`) and a Celery worker. Observability and Neo4j are separate profiles.
 
+   For the optional V0.7 graph experiment:
+
+   ```powershell
+   docker compose --profile graph up -d neo4j
+   ```
+
    Start the observability profile when you want system metrics and OTLP traces:
 
    ```powershell
