@@ -66,6 +66,13 @@
 2. 对 V0.5 的 `text_too_long`、跨语言和 Citation Support 切片做人工复核和回答 Eval。
 3. 只有 V0.4–V0.9 质量门通过后，才解除页面和 API 中 V1 Controlled Agent 的锁定。
 
+## V0.6–V1 状态修正（2026-08-24）
+
+- 真实问题：代码和报告已经推进到 V0.6、V0.7、V0.9 和 V1 预检，但工作台状态卡仍按旧占位逻辑显示“等待施工”，容易把“已实现但未发布”误解成“未实现”。
+- 修复：`app/lifecycle.py` 现在读取 V0.5/V0.6 Eval、稳定性、安全、Agent preflight 和 release check 报告；`app/main.py:/api/lifecycle` 同时读取 Neo4j profile；`app/frontier.py` 明确把 Graph 和 PDF 页级基线标为实验状态。
+- 当前显示：V0.5 同集 Eval 已通过但仍待人工 Citation Support；V0.6 受控一次纠错已完成；V0.7 Graph profile 已运行但等待全局问题集；V0.8 页级 PDF 基线已实现但官方 PDF CDN 403；V0.9 运维演练已通过但 release gate 仍被 Golden Review 阻塞；V1 Agent preflight routing accuracy=1.0、危险动作=0，但默认 API 仍锁定。
+- 决定：状态只能反映证据，不能把自动分数或隔离预检当作正式发布批准。
+
 ## V0.7：Graph-Augmented（可选）
 
 - 真实问题：Support Intelligence 的全局聚合问题不是普通单次 Top-k 客服问题。

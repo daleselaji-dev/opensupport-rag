@@ -336,6 +336,10 @@ async def graph_query(kind: str = Query(default="top_issues", pattern="^(top_iss
 @app.get("/api/lifecycle")
 async def lifecycle():
     health_state = await app.state.rag.health()
+    # Lifecycle cards must reflect optional profiles too; RagService.health()
+    # deliberately owns only the RAG dependencies, while Neo4j is a separate
+    # Support Intelligence profile.
+    health_state["graph"] = await app.state.graph.health()
     return build_lifecycle(health_state, load_last_eval(), load_last_answer_eval("v0_2"))
 
 

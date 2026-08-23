@@ -61,7 +61,9 @@ FRONTIER_MODULES = [
         "problem": "全局主题、多跳关系和跨文档聚合不是普通 Top-k 检索问题",
         "source": "https://www.microsoft.com/en-us/research/project/graphrag/overview/",
         "trace_added": ["graph_route", "entity_link", "community_select", "graph_evidence"],
-        "status": "planned",
+        "status": "experimental",
+        "implementation": "Neo4j Community profile 已运行；已写入结构化 CFPB Complaint/Product/Issue/Company 关系，未让 LLM 创造事实关系",
+        "last_eval": "Graph smoke：223 Complaint、112 Source、802 structured relationships；尚未完成全局主题 Golden Set",
         "entry_gate": "只在 Support Intelligence 全局问题切片上比较，必须追溯实体和原始来源",
     },
     {
@@ -71,7 +73,9 @@ FRONTIER_MODULES = [
         "problem": "PDF 表格、图表、布局信息在纯 OCR/文本 Chunk 中丢失",
         "source": "https://proceedings.iclr.cc/paper_files/paper/2025/hash/99e9e141aafc314f76b0ca3dd66898b3-Abstract-Conference.html",
         "trace_added": ["detect_modality", "render_pdf", "visual_retrieve", "extract_region"],
-        "status": "planned",
+        "status": "experimental",
+        "implementation": "V0.8 页级 pypdf 文本基线已实现，保留 page metadata；Docling/MinerU/视觉区域检索仍未进入默认链路",
+        "last_eval": "官方 CFPB PDF CDN 当前 403；因此不宣称视觉表格/图表 Recall",
         "entry_gate": "页面级 Recall 与真实表格/图表问题的引用正确性可复现",
     },
     {
