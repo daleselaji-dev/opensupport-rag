@@ -10,6 +10,8 @@
 - Agent 锁定：`AGENT_ENABLED=false` 时 V1 API 返回 423，页面展示锁定原因，不提前执行外部动作。
 - 蓝绿 Alias：`/api/index/activate` 只接受已登记的 Dense/Sparse 集合对，原集合不删除；`/api/index/rollback` 原子切回上一指针。
 - 内容安全扫描：摄取阶段检测 PII/提示注入，生成前再次扫描证据；疑似注入文本不会直接进入 Prompt。
+- 间接 Prompt Injection fail-closed：如果所有候选 Prompt 片段都被标记，系统停止生成并转人工，绝不把不可信原文重新塞回 Prompt。
+- 完整回答 Eval：每条案例使用独立 timeout；单条 R1 卡住会记录失败并继续完整 Golden Set，不会让整轮评测无限等待。
 - Celery 异步任务：`/api/index/build-contextual-async` 把 V0.5 重建移出 API 请求线程，`/api/tasks/{task_id}` 可查询状态。
 
 这些能力不是“优化项”，而是把本地 Demo 变成可以观察、限流、超时和降级的服务边界。

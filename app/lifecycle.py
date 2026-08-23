@@ -52,6 +52,7 @@ def build_lifecycle(
     graph_state = (health.get("graph") or {}).get("state", "locked")
     contextual_eval = _read_report("eval_latest_v0_5_hybrid.json")
     corrective_eval = _read_report("eval_latest_v0_6_hybrid.json")
+    reranker_ablation = _read_report("reranker_ablation_latest.json")
     stability = _read_report("stability_latest.json")
     agent_eval = _read_report("agent_eval_latest.json")
     release_check = _read_report("release_check_latest.json")
@@ -116,7 +117,7 @@ def build_lifecycle(
                 "status": "blocked" if not data_gate or manifest_points != qdrant_points else "passed",
                 "status_label": "未通过" if not data_gate or manifest_points != qdrant_points else "通过",
                 "actual": (f"{complaint_count} 条索引投诉；接受投诉 {accepted_complaints}；总接受 {accepted_documents}；重复 {duplicate_documents}；隔离 {quarantined_documents}；Manifest {manifest_points} vs Qdrant {qdrant_points}" if data_ready else f"尚未生成 Data Quality 报告；Manifest {manifest_points} vs Qdrant {qdrant_points}"),
-                "target": "≥200 条唯一投诉；Manifest 与实际索引一致；重复数为 0；所有隔离项可解释",
+                "target": "V0.1 ≥200；V1 生产 ≥10,000 条唯一投诉；Manifest 与实际索引一致；重复数为 0；所有隔离项可解释",
                 "enterprise_value": "企业首先要能复现数据版本，否则后面的分数不可信。",
             },
             {
@@ -203,7 +204,7 @@ def build_lifecycle(
                 "status": "experimental" if reranker_state in {"ready", "not_loaded", "unavailable"} else "locked",
                 "status_label": "可选实验开关" if reranker_state in {"ready", "not_loaded", "unavailable"} else "等待检索质量证据",
                 "scope": "RRF 候选 · Cross-Encoder · 排名对照",
-                "evidence": f"运行状态：{reranker_state}；必须先证明正确来源进了候选集但排名靠后",
+                "evidence": (f"运行状态：{reranker_state}；消融结果 {[(item.get('config', {}).get('candidate_k'), item.get('mrr'), item.get('retrieval_p95_ms')) for item in reranker_ablation.get('results', [])]}；必须先证明正确来源进了候选集但排名靠后" if reranker_ablation else f"运行状态：{reranker_state}；必须先证明正确来源进了候选集但排名靠后"),
                 "gate": "MRR/nDCG 或 Citation Precision 改善；延迟增幅受控",
                 "next_action": "继续 candidate-k/batch/truncation 消融；当前首轮 MRR 未改善且 p95 很高，暂不升为默认",
             },

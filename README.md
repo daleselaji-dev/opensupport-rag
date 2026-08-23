@@ -98,7 +98,7 @@ DeepSeek-R1 generates a cited answer**.
 
 8. Open [http://localhost:18000](http://localhost:18000), import CFPB records, then ask a Chinese or English question. The workbench shows the component assembly and each query's trace. Use `OBJECTIVE EVAL` to compare Dense baseline with Hybrid + RRF before claiming an upgrade.
 
-The complaint records are retrieved live from the official CFPB API; no complaint corpus is committed to this repository. After import, `data/data_quality_latest.json` and `data/ingest_manifest.json` record the reproducible local snapshot.
+The project supports the official CFPB API and official bulk CSV ZIP; no complaint corpus is committed to this repository. The current verified local snapshot was built from the official bulk ZIP. After import, `data/data_quality_latest.json` and `data/ingest_manifest.json` record the reproducible local snapshot.
 
 If CFPB's public JSON/CSV endpoint is temporarily WAF-blocked, download the
 official CSV from the [Consumer Complaint Database](https://www.consumerfinance.gov/data-research/consumer-complaints/), save it as
@@ -125,6 +125,20 @@ Invoke-RestMethod -Method Post -Uri http://localhost:18000/api/ingest-local -Con
 This mirror preserves real CFPB complaint IDs and points each complaint back
 to its CFPB detail URL while recording the mirror URL in metadata. The report
 does not claim that the mirror is a live CFPB snapshot.
+
+For the production-scale local snapshot used in the latest evidence, download
+the official CFPB bulk ZIP and extract a bounded narrative set without committing the ZIP:
+
+```powershell
+curl.exe -L --fail -o data/raw/cfpb_complaints_full.csv.zip https://files.consumerfinance.gov/ccdb/complaints.csv.zip
+$env:PYTHONPATH = "."
+.\.venv\Scripts\python.exe scripts/prepare_official_bulk_snapshot.py --limit 12000
+.\.venv\Scripts\python.exe scripts/ingest_bulk_snapshot.py --limit 12000 --batch-size 256
+```
+
+The checkpointed worker preserves official Complaint IDs and URL provenance, skips already
+indexed chunk IDs, and writes `data/bulk_ingest_progress.json`. The verified snapshot contains
+12,000 new complaint records and 12,335 main Qdrant points.
 
 ### Online embedding fallback
 
@@ -159,7 +173,7 @@ Question
 
 ## V0.2 evaluation and upgrade trace
 
-The query form can switch between `Dense baseline` and `Hybrid: Dense + Qdrant Sparse/BM25 + RRF`. Hybrid traces add `sparse_backend`, `bm25_guidance`, `bm25_complaints`, and `fusion_rrf`, with component ranks and scores preserved in source metadata. The eval button runs the same versioned, URL-linked benchmark and stores reports under `reports/`. The current local snapshot has 200 newly accepted mirror complaints, 223 complaint chunks in the cumulative index, 335 Qdrant points and a matching manifest. The 50-case Golden Draft is still explicitly blocked on two-person human review.
+The query form can switch between `Dense baseline` and `Hybrid: Dense + Qdrant Sparse/BM25 + RRF`. Hybrid traces add `sparse_backend`, `bm25_guidance`, `bm25_complaints`, and `fusion_rrf`, with component ranks and scores preserved in source metadata. The eval button runs the same versioned, URL-linked benchmark and stores reports under `reports/`. The current local snapshot is derived from CFPB's official bulk CSV ZIP: 12,000 new public-narrative complaints were embedded in 47 batches, producing 12,223 cumulative complaint chunks and 12,335 matching Dense/Sparse Qdrant points. The 50-case Golden Draft is still explicitly blocked on two-person human review.
 
 Use `只运行检索 Trace` to inspect Embedding and retrieval without waiting for Chat LLM generation. The component inspector explains each node even before a query has run. `RAG EVOLUTION` separates project-stage status from service health. V0.4 Cross-Encoder is visible as an experimental opt-in path; it remains outside the default chain until the frozen benchmark proves a ranking problem.
 

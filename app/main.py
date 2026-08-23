@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.cfpb import fetch_credit_card_complaints, fetch_official_guidance, load_cfpb_mirror_csv, load_credit_card_complaints_csv
+from app.cfpb import fetch_credit_card_complaints, fetch_official_guidance, load_cfpb_mirror_csv, load_cfpb_official_bulk_csv, load_credit_card_complaints_csv
 from app.config import get_settings
 from app.answer_eval import load_last_answer_eval, run_answer_eval
 from app.agent import ComplaintAgent
@@ -340,7 +340,7 @@ async def lifecycle():
     # deliberately owns only the RAG dependencies, while Neo4j is a separate
     # Support Intelligence profile.
     health_state["graph"] = await app.state.graph.health()
-    return build_lifecycle(health_state, load_last_eval(), load_last_answer_eval("v0_2"))
+    return build_lifecycle(health_state, load_last_eval(), load_last_answer_eval("v0_3") or load_last_answer_eval("v0_2"))
 
 
 @app.post("/api/eval/run")
@@ -378,7 +378,7 @@ async def answer_eval_run(
 
 @app.get("/api/eval/answer-last")
 async def answer_eval_last(benchmark_version: str = Query(default="v0_2", pattern="^v0_[23]$")):
-    return load_last_answer_eval(benchmark_version) or {"status": "not_run", "message": "尚未运行回答/安全 Eval。"}
+    return load_last_answer_eval(benchmark_version) or (load_last_answer_eval("v0_3") if benchmark_version == "v0_2" else None) or {"status": "not_run", "message": "尚未运行回答/安全 Eval。"}
 
 
 async def _complete_ingest(
@@ -408,29 +408,24 @@ async def _complete_ingest(
     )
     DATA.mkdir(exist_ok=True)
     manifest_path = DATA / "ingest_manifest.json"
+    manifest_payload = {
+        "year": year,
+        "requested_complaints": requested_limit,
+        "complaint_ids": [record.complaint_id for record in complaints],
+        "guidance_urls": sorted({document.source_url for document in guidance}),
+        "indexed_documents": collection_indexed,
+        "batch_indexed_documents": batch_indexed,
+        "collection_indexed_documents": collection_indexed,
+        "snapshot_id": quality.snapshot_id,
+        "pipeline_version": quality.pipeline_version,
+        "accepted_documents": quality.accepted_documents,
+        "duplicate_documents": quality.duplicate_documents,
+        "quarantined_documents": quality.quarantined_documents,
+        "document_hashes": sorted(str(document.metadata.get("content_sha256")) for document in documents),
+    }
+    manifest_path.write_text(json.dumps(manifest_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    quality = quality.model_copy(update={"manifest_consistent": manifest_payload["indexed_documents"] == manifest_payload["collection_indexed_documents"]})
     save_quality_report(quality, QUALITY_REPORT)
-    manifest_path.write_text(
-        json.dumps(
-            {
-                "year": year,
-                "requested_complaints": requested_limit,
-                "complaint_ids": [record.complaint_id for record in complaints],
-                "guidance_urls": sorted({document.source_url for document in guidance}),
-                "indexed_documents": collection_indexed,
-                "batch_indexed_documents": batch_indexed,
-                "collection_indexed_documents": collection_indexed,
-                "snapshot_id": quality.snapshot_id,
-                "pipeline_version": quality.pipeline_version,
-                "accepted_documents": quality.accepted_documents,
-                "duplicate_documents": quality.duplicate_documents,
-                "quarantined_documents": quality.quarantined_documents,
-                "document_hashes": sorted(str(document.metadata.get("content_sha256")) for document in documents),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
     return IngestResponse(
         requested_complaints=requested_limit,
         fetched_complaints=len(complaints),
@@ -486,6 +481,9 @@ async def ingest_local(request: LocalIngestRequest):
         if request.source_kind == "cfpb_mirror":
             complaints = load_cfpb_mirror_csv(str(path), request.limit, request.year, request.product_filter)
             ingest_year: int | str = request.year if request.year is not None else "all"
+        elif request.source_kind == "cfpb_bulk_official":
+            complaints = load_cfpb_official_bulk_csv(str(path), request.limit, request.year, request.product_filter)
+            ingest_year = request.year if request.year is not None else "official_bulk"
         else:
             complaints = load_credit_card_complaints_csv(str(path), request.limit, request.year or 2024)
             ingest_year = request.year or 2024

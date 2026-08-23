@@ -57,6 +57,7 @@ def test_complaints_with_distinct_source_identity_are_retained():
 
 def test_finalize_quality_report_records_derived_index_count():
     accepted, report = prepare_documents([make_document("g1", "Official guidance sentence. " * 4)])
-    final = finalize_quality_report(report, len(accepted))
+    final = finalize_quality_report(report, len(accepted), manifest_consistent=True)
     assert final.indexed_documents == 1
     assert final.stage_counts["active"] == 1
+    assert final.manifest_consistent is True

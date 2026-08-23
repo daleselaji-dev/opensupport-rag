@@ -22,7 +22,7 @@ from app.cache import RedisCache
 from app.corrective import build_retry_query, grade_evidence
 from app.contextual import prepare_contextual_documents
 from app.data_foundation import load_quality_report
-from app.guardrails import analyze_answer, normalize_citations
+from app.guardrails import analyze_answer, detect_request_risks, normalize_citations
 from app.index_registry import IndexAliasRegistry
 from app.multimodal import extract_pdf_pages
 from app.routing import IntentRoute, classify_intent
@@ -306,11 +306,13 @@ class RagService:
             max_chars=self.settings.contextual_chunk_chars,
             overlap=self.settings.contextual_chunk_overlap,
         )
-        indexed = await self.ingest(
-            contextual,
-            collection_name=self.settings.contextual_collection_name,
-            sparse_collection_name=self.settings.contextual_sparse_collection_name,
-        )
+        indexed = 0
+        for start in range(0, len(contextual), max(1, batch_size)):
+            indexed += await self.ingest(
+                contextual[start : start + max(1, batch_size)],
+                collection_name=self.settings.contextual_collection_name,
+                sparse_collection_name=self.settings.contextual_sparse_collection_name,
+            )
         return {
             "source_documents": len(raw),
             "contextual_chunks": len(contextual),
@@ -1094,6 +1096,13 @@ Answer to edit:
         if not sources:
             self.add_trace(trace, "completed", started, "没有召回证据", {"source_count": 0})
             return "目前没有可用证据。请先导入真实投诉与 CFPB 官方指导。", [], False, [], trace, {"citation_coverage": 0.0, "safety_flags": ["no_evidence"], "needs_human_review": True}
+        request_risks = detect_request_risks(question)
+        if request_risks:
+            refusal = "公开资料不足以支持这个具体承诺或账户处理决定，不能替代人工核查。请移除敏感信息，并由人工复核原始证据。\n\n这不是法律、金融或账户处理决定。"
+            self.add_trace(trace, "request_safety_gate", time.perf_counter(), "问题触发高风险请求边界，停止自动生成", {"risk_flags": request_risks}, "failed")
+            self.add_trace(trace, "guardrail_review", time.perf_counter(), "高风险请求已拒答并转人工", {"reason": "request_risk", "risk_flags": request_risks}, "failed")
+            self.add_trace(trace, "completed", started, "RAG 查询完成但未执行自动生成", {"source_count": len(sources), "citation_valid": False, "needs_human_review": True})
+            return refusal, sources, False, [], trace, {"citation_coverage": 1.0, "safety_flags": [f"request_risk:{flag}" for flag in request_risks], "needs_human_review": True}
         # Keep the complete six-source result visible to the user, but send a
         # compact authority-balanced subset to small local chat contexts.
         candidate_prompt_sources = sources[:2] + sources[3:4] if len(sources) > 3 else sources[:3]
@@ -1105,8 +1114,6 @@ Answer to edit:
                 flagged_sources.append({"citation": source.citation, "flags": safety["prompt_injection_flags"]})
             else:
                 prompt_sources.append(source)
-        if not prompt_sources:
-            prompt_sources = candidate_prompt_sources
         self.add_trace(
             trace,
             "evidence_safety_scan",
@@ -1114,6 +1121,25 @@ Answer to edit:
             f"扫描 {len(candidate_prompt_sources)} 条 Prompt 候选，隔离 {len(flagged_sources)} 条疑似注入内容",
             {"candidate_count": len(candidate_prompt_sources), "flagged": flagged_sources, "prompt_source_count": len(prompt_sources)},
         )
+        if flagged_sources and not prompt_sources:
+            # Never fall back to putting an untrusted document back into the
+            # prompt. The previous behavior made the safety scan meaningless
+            # when every compact candidate contained an indirect injection.
+            blocked_answer = "召回证据包含潜在的提示注入内容，已阻止模型读取这些片段；请人工复核原始来源。\n\n这不是法律、金融或账户处理决定。"
+            self.add_trace(
+                trace,
+                "guardrail_review",
+                time.perf_counter(),
+                "所有 Prompt 候选均被安全扫描隔离，停止生成",
+                {"reason": "all_prompt_candidates_flagged", "flagged": flagged_sources},
+                "failed",
+            )
+            self.add_trace(trace, "completed", started, "RAG 查询因证据注入风险安全停止", {"source_count": len(sources), "citation_valid": False})
+            return blocked_answer, sources, False, [], trace, {
+                "citation_coverage": 0.0,
+                "safety_flags": ["prompt_injection_evidence"],
+                "needs_human_review": True,
+            }
         started = time.perf_counter()
         context_chars = sum(len(source.text) for source in prompt_sources)
         self.add_trace(

@@ -39,7 +39,8 @@
 - Trace：增加 `rerank_candidates`，记录 candidate-k、batch size、文本截断、Before/After Chunk ID 和 `rerank_score`。
 - 真实故障：50 个候选一次性请求时，长投诉 Chunk 使 llama.cpp `ubatch` 超限并返回 500；改为 14 个受控 batch 后稳定完成。
 - 证据：8-case seed Hit@3=1.0、MRR=0.9375、p95=35168.92ms；V0.3 Hybrid MRR=1.0、p95=81.38ms。
-- 决定：V0.4 可运行但暂不进入默认链路；后续只调 candidate-k/batch/truncation，并以同集 MRR/nDCG、Citation Support、p95 和成本决定接受或撤回。
+- 参数消融：同一 8-case seed、batch=16、text=800 时，candidate-k=10 为 Hit@3=1.0、MRR=0.9375、p95=5346.49ms；candidate-k=20 为 Hit@3=1.0、MRR=1.0、p95=9908.5ms。结果写入 `reports/reranker_ablation_latest.json`。
+- 决定：V0.4 可运行但暂不进入默认链路；candidate-k=20 的排名收益无法抵消相对 V0.3 Hybrid 约 81ms 的巨大延迟增幅。后续只有在更强失败切片和 Citation Support 证据改善时才重新评估。
 
 ## 生成安全故障：为什么会频繁人工复核
 
@@ -72,6 +73,27 @@
 - 修复：`app/lifecycle.py` 现在读取 V0.5/V0.6 Eval、稳定性、安全、Agent preflight 和 release check 报告；`app/main.py:/api/lifecycle` 同时读取 Neo4j profile；`app/frontier.py` 明确把 Graph 和 PDF 页级基线标为实验状态。
 - 当前显示：V0.5 同集 Eval 已通过但仍待人工 Citation Support；V0.6 受控一次纠错已完成；V0.7 Graph profile 已运行但等待全局问题集；V0.8 页级 PDF 基线已实现但官方 PDF CDN 403；V0.9 运维演练已通过但 release gate 仍被 Golden Review 阻塞；V1 Agent preflight routing accuracy=1.0、危险动作=0，但默认 API 仍锁定。
 - 决定：状态只能反映证据，不能把自动分数或隔离预检当作正式发布批准。
+
+## 生产数据快照与安全回归（2026-08-24）
+
+- 数据升级：从 CFPB 官方 `complaints.csv.zip` 下载全量快照（官方 ZIP 约 1.35GB），抽取 12,000 条有公开叙述且保留真实 Complaint ID 的记录；47 个 Embedding/写入批次完成，新增 12,000 个文档，主 Dense/Sparse 索引达到 12,335 points，投诉 Chunk 达到 12,223，Manifest 一致。
+- Contextual 重建：12,335 个源文档生成 19,087 个 Contextual Chunk，其中 11,100 个 parent-child 扩展；主索引未被覆盖，V0.5 仍是隔离派生索引。
+- 新快照检索证据：V0.3 Hybrid 40-case Hit@3=0.975、MRR=0.8792、p95=142.82ms；V0.5 Hit@3=0.975、MRR=0.8958、p95=174.15ms；V0.6 Hit@3=0.975、MRR=0.8958、p95=164.8ms。指标以新快照为准，旧 335-point 报告仅保留作历史对照。
+- 真实安全问题：12,335 points 扫描发现 2 条投诉叙述包含 `system prompt` 模式；它们是消费者公开文本，不是系统指令。修复了“全部候选被标记后仍把原文放回 Prompt”的漏洞：现在没有安全候选时直接停止生成、标记 `prompt_injection_evidence` 并转人工。安全报告区分 `isolated_prompt_injection_findings=2` 与 `unisolated=0`。
+- 真实数据源限制：官方 CFPB HTML 页面在当前运行环境返回 403；已有 4 个官方指导 Chunk 保留在索引中，失败 URL/时间写入摄取进度，未伪造新指导内容。
+
+## 完整回答/安全 Eval 与请求级风险门（2026-08-24）
+
+- 真实失败：新快照的完整 50-case Answer Eval 首轮 citation validity=1.0、coverage=0.995，但拒答正确率只有 0.6；4 条“保证退款 / 账户动作 / 敏感信息”问题被 R1 当成普通问答。
+- 根因：仅检查生成后的危险声明，不在生成前识别用户请求风险；模型可以给出不含禁止词但仍然越界的普通说明。
+- 升级：加入 `detect_request_risks` 和 `request_safety_gate`，对退款/结果承诺、法律结论、账户动作、PII/隐藏数据、ATM 操作和提示注入在 LLM 前直接拒答/转人工。
+- 复测：完整 50-case V0.6 Answer Eval citation validity=1.0、citation coverage=1.0、refusal correctness=1.0、forbidden claims=0、answer errors/timeouts=0、p95=26,758.29ms。
+- 另一个真实故障：单条 R1 卡住会拖住整轮 Eval；增加每案例 timeout，超时计为失败并继续，不能用平均分隐藏。
+
+## V0.7 Graph 重建（2026-08-24）
+
+- 在 12,335-point 官方快照上重建 Neo4j：12,223 Complaint、112 Source、41,802 条结构化关系；改用 `UNWIND` 批量写入，避免逐条 Cypher 循环成为新的摄取瓶颈。
+- Graph smoke 通过：top issues/products 非空、计数非负、profile ready；它仍只适用于 Support Intelligence 聚合问题，不替代客服默认 RAG，也不代表责任或违法。
 
 ## V0.7：Graph-Augmented（可选）
 

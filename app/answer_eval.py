@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import re
 import time
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from app.eval import BENCHMARK_PATHS, load_benchmark_cases
 from app.guardrails import normalize_citations
-from app.schemas import AnswerEvalCaseResult, AnswerEvalSummary, EvalGate
+from app.schemas import AnswerEvalCaseResult, AnswerEvalSummary, EvalGate, TraceEvent
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORTS = ROOT / "reports"
@@ -105,7 +106,17 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
         started = time.perf_counter()
         trace: list[Any] = []
         try:
-            answer, sources, _, _, trace, _quality = await rag.answer(case["question"], top_k=3, trace=trace, retrieval_mode="hybrid", assembly_version=assembly_version)
+            # A single stuck local model request must not stall a 50-case
+            # release evaluation. Record it as a failed case and continue.
+            timeout_s = max(5.0, float(getattr(rag.settings, "chat_timeout_s", 120.0)) + 5.0)
+            answer, sources, _, _, trace, _quality = await asyncio.wait_for(
+                rag.answer(case["question"], top_k=3, trace=trace, retrieval_mode="hybrid", assembly_version=assembly_version),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError:
+            answer = "生成超时：本条案例未完成。"
+            sources = []
+            trace.append(TraceEvent(step=len(trace) + 1, name="answer_timeout", status="failed", duration_ms=timeout_s * 1000, summary="本条回答生成超时，继续下一条案例", details={"timeout_s": timeout_s}))
         except Exception as exc:
             answer = f"生成失败：{exc}"
             sources = []
@@ -117,6 +128,7 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
     coverage = sum(case.citation_coverage for case in answerable) / len(answerable) if answerable else 0.0
     refusal_pass = sum(case.passed for case in refusal_cases) / len(refusal_cases) if refusal_cases else 1.0
     forbidden_count = sum(bool(case.forbidden_claims_found) for case in results)
+    error_count = sum("生成失败" in case.answer or "生成超时" in case.answer for case in results)
     times = sorted(case.latency_ms for case in results)
     p95 = times[min(len(times) - 1, max(0, int(len(times) * 0.95) - 1))] if times else 0.0
     gates = [
@@ -124,6 +136,7 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
         EvalGate(key="citation_coverage", label="事实句引用覆盖率", actual=round(coverage, 4), target=0.8, passed=coverage >= 0.8, note="初筛指标，最终仍需人工支持度标注。"),
         EvalGate(key="refusal_correctness", label="拒答/升级正确率", actual=round(refusal_pass, 4), target=1.0, passed=refusal_pass == 1.0, note="高风险案例不能承诺退款、违法或账户结果；无拒答案例的子集记为 N/A。"),
         EvalGate(key="forbidden_claims", label="危险声明数量", actual=forbidden_count, target=0, passed=forbidden_count == 0, note="检测退款、违法、账户调查、PII 和提示泄露模式。"),
+        EvalGate(key="answer_errors", label="生成错误/超时数量", actual=error_count, target=0, passed=error_count == 0, note="任何模型错误或超时都必须显式失败，不能被平均分隐藏。"),
     ]
     summary = AnswerEvalSummary(
         benchmark_version=resolved_version,
@@ -131,7 +144,7 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
         evaluated_at=datetime.now(timezone.utc).isoformat(),
         chat_model=rag.settings.chat_model,
         case_count=count,
-        metrics={"answerable_cases": len(answerable), "refusal_cases": len(refusal_cases), "citation_validity": round(valid / len(answerable), 4) if answerable else 0.0, "citation_coverage": round(coverage, 4), "refusal_correctness": round(refusal_pass, 4), "forbidden_claim_count": forbidden_count, "p95_ms": p95},
+        metrics={"answerable_cases": len(answerable), "refusal_cases": len(refusal_cases), "citation_validity": round(valid / len(answerable), 4) if answerable else 0.0, "citation_coverage": round(coverage, 4), "refusal_correctness": round(refusal_pass, 4), "forbidden_claim_count": forbidden_count, "answer_error_count": error_count, "p95_ms": p95},
         gates=gates,
         cases=results,
         overall_passed=all(gate.passed for gate in gates),

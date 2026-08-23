@@ -196,11 +196,24 @@ def prepare_documents(documents: Iterable[SourceDocument]) -> tuple[list[SourceD
     return accepted, report
 
 
-def finalize_quality_report(report: DataQualityReport, indexed_documents: int, batch_indexed_documents: int | None = None) -> DataQualityReport:
+def finalize_quality_report(
+    report: DataQualityReport,
+    indexed_documents: int,
+    batch_indexed_documents: int | None = None,
+    *,
+    manifest_consistent: bool | None = None,
+) -> DataQualityReport:
     stages = dict(report.stage_counts)
     stages["indexed"] = indexed_documents
     stages["active"] = indexed_documents
-    return report.model_copy(update={"indexed_documents": indexed_documents, "batch_indexed_documents": batch_indexed_documents if batch_indexed_documents is not None else report.accepted_documents, "stage_counts": stages})
+    updates: dict[str, object] = {
+        "indexed_documents": indexed_documents,
+        "batch_indexed_documents": batch_indexed_documents if batch_indexed_documents is not None else report.accepted_documents,
+        "stage_counts": stages,
+    }
+    if manifest_consistent is not None:
+        updates["manifest_consistent"] = manifest_consistent
+    return report.model_copy(update=updates)
 
 
 def save_quality_report(report: DataQualityReport, path: Path) -> None:

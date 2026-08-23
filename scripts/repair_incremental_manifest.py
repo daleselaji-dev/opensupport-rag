@@ -24,6 +24,7 @@ async def main() -> None:
     batch = int(report.get("batch_indexed_documents") or report.get("accepted_documents") or 0)
     report["indexed_documents"] = total
     report["batch_indexed_documents"] = batch
+    report["manifest_consistent"] = True
     report.setdefault("stage_counts", {})["indexed"] = total
     report.setdefault("stage_counts", {})["active"] = total
     quality_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

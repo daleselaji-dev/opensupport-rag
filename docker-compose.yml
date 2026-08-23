@@ -145,6 +145,44 @@ services:
       - ./data:/app/data
       - ./reports:/app/reports
 
+  agent:
+    build:
+      context: .
+      args:
+        INSTALL_RERANKER: ${INSTALL_RERANKER:-false}
+    profiles: ["agent"]
+    command: ["python", "scripts/agent_release_entrypoint.py"]
+    env_file: .env
+    environment:
+      AGENT_ENABLED: "true"
+      AGENT_HOST: "0.0.0.0"
+      AGENT_PORT: "8000"
+      QDRANT_URL: http://qdrant:6333
+      CHAT_BASE_URL: ${DOCKER_LM_STUDIO_BASE_URL}
+      EMBEDDING_BASE_URL: ${DOCKER_EMBEDDING_BASE_URL}
+      POSTGRES_URL: postgresql+psycopg://opensupport:opensupport@postgres:5432/opensupport
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: opensupport
+      MINIO_SECRET_KEY: opensupport-dev-secret
+      REDIS_URL: redis://redis:6379/0
+      TRUTH_SOURCE_REQUIRED: "true"
+      STORAGE_PROBE_ENABLED: "true"
+      TRACE_PERSISTENCE_ENABLED: "true"
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_ENDPOINT: http://otel-collector:4318
+      RERANKER_BASE_URL: ${DOCKER_RERANKER_BASE_URL}
+      NEO4J_URL: bolt://host.docker.internal:17687
+    ports:
+      - "18001:8000"
+    depends_on:
+      - qdrant
+      - postgres
+      - minio
+      - redis
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+
 volumes:
   qdrant_data:
   postgres_data:

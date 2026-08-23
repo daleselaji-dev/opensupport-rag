@@ -104,9 +104,9 @@ class IngestRequest(BaseModel):
 
 class LocalIngestRequest(BaseModel):
     filename: str = Field(default="complaints.csv", min_length=1, max_length=200)
-    limit: int = Field(default=200, ge=1, le=10000)
+    limit: int = Field(default=200, ge=1, le=15000)
     year: int | None = Field(default=None, ge=2011, le=2030)
-    source_kind: Literal["cfpb_csv", "cfpb_mirror"] = "cfpb_csv"
+    source_kind: Literal["cfpb_csv", "cfpb_mirror", "cfpb_bulk_official"] = "cfpb_csv"
     product_filter: str = Field(default="any", min_length=1, max_length=120)
 
 

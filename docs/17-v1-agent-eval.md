@@ -14,6 +14,15 @@ missing fields、PII stop、out-of-domain stop、`search_guidance`、`search_com
 这不是上线批准：仍需 V0.9 的稳定性、安全、数据版本和人工 Golden Review 全通过，之后才
 可以在专门环境中把 `AGENT_ENABLED=true`，并完成真实人工审批遵从率评测。
 
+正式 release 环境只能通过门禁脚本启动：
+
+```powershell
+.\scripts\start_agent_release.ps1 -Port 18001
+```
+
+脚本会先读取 `reports/release_check_latest.json`；任一 Gate 失败就拒绝启动，不允许通过
+手动环境变量绕过发布门。
+
 隔离 API 预验收也已完成：临时端口启用 Agent 后，真实请求生成 `pending_approval` 草稿，
 Trace 包含白名单检索和 `human_approval_gate`；随后通过审批 API 写入 `approved_by`。临时
 实例已关闭，公开端口仍保持锁定。

@@ -24,6 +24,20 @@ FORBIDDEN_PATTERNS: dict[str, tuple[str, ...]] = {
     "guaranteed_outcome": (r"一定会受理", r"保证结果", r"guarantee.{0,20}outcome"),
 }
 
+REQUEST_RISK_PATTERNS: dict[str, tuple[str, ...]] = {
+    "refund_or_outcome_promise": (r"保证.{0,16}(退款|结果)", r"一定.{0,12}(退款|结果)", r"promise.{0,24}refund", r"guarantee.{0,24}(refund|outcome)", r"refund.{0,20}today"),
+    "legal_conclusion": (r"公司违法", r"企业违法", r"违反法律", r"确认.{0,10}违法", r"broke the law", r"legally liable"),
+    "account_decision": (r"账户调查", r"账户处理", r"修改账户", r"直接告诉我怎么改", r"account investigation", r"update my account"),
+    "pii_or_hidden_data": (r"个人信息", r"联系方式", r"完整.*信息", r"hidden customer data", r"system prompt", r"系统提示词", r"ignore (all|any|previous) instructions"),
+    "unsupported_domain_action": (r"ATM", r"atm", r"取款机", r"cash machine"),
+}
+
+
+def detect_request_risks(question: str) -> list[str]:
+    """Detect requests that require refusal or human handling before generation."""
+
+    return [name for name, patterns in REQUEST_RISK_PATTERNS.items() if any(re.search(pattern, question, re.IGNORECASE) for pattern in patterns)]
+
 
 def normalize_citations(answer: str) -> str:
     """Canonicalize safe citation marker variants to ASCII `[S1]`/`[C1]`."""

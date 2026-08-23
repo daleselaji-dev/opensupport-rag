@@ -43,6 +43,19 @@ $env:RERANKER_ENABLED = "true"
 335 点快照的真实 V0.4 查询中，50 个候选被拆成 14 个 batch，Rerank 耗时约 `34.8s`；这是
 当前本地模型/硬件的真实延迟，不会被隐藏。`RERANKER_BATCH_SIZE` 和 `RERANKER_TEXT_CHARS`
 可在安全范围内调参，任何改变都要重新跑同一 Benchmark。
+
+参数消融脚本：
+
+```powershell
+$env:PYTHONPATH = "."
+.\.venv\Scripts\python.exe scripts\reranker_ablation.py --benchmark-version v0.2 --max-cases 8 --candidate-k 10 20
+```
+
+同一冻结 8-case seed 的实测结果：`candidate-k=10, batch=16, text=800` 为 Hit@3 `1.0`、
+MRR `0.9375`、p95 `5346.49ms`；`candidate-k=20` 为 Hit@3 `1.0`、MRR `1.0`、p95
+`9908.5ms`。V0.3 Hybrid 基线的 MRR 为 `1.0`、p95 约 `81.38ms`。因此扩大候选集只带来
+种子集排名收益，却显著增加延迟，当前不进入默认链路；完整结果保存在
+`reports/reranker_ablation_latest.json`。
 `BAAI/bge-reranker-v2-m3` 仍保留为可选 Python 后端。若本地 Reranker 服务不可用，工作台
 显示 424 和启动动作，V0.1–V0.3 不受影响。
 

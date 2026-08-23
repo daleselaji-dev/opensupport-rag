@@ -44,43 +44,65 @@ class GraphStore:
     def _build_sync(self, records: list[dict[str, Any]]) -> dict[str, int]:
         if self.driver is None:
             raise RuntimeError("Neo4j Graph profile 未启用或驱动未安装。")
-        counts = {"complaints": 0, "guidance": 0, "relationships": 0}
+        complaints = []
+        sources = []
+        relation_rows: dict[str, list[dict[str, str]]] = {
+            "Product": [],
+            "Issue": [],
+            "Company": [],
+            "Response": [],
+        }
+        relation_specs = (("product", "Product", "HAS_PRODUCT"), ("issue", "Issue", "HAS_ISSUE"), ("company", "Company", "INVOLVES_COMPANY"), ("company_response", "Response", "HAS_RESPONSE"))
+        guidance_count = 0
+        for payload in records:
+            source_type = payload.get("source_type")
+            metadata = payload.get("metadata") or {}
+            source_url = str(payload.get("source_url", ""))
+            title = str(payload.get("title", ""))
+            sources.append({"url": source_url, "title": title, "source_type": str(source_type or "unknown")})
+            if source_type == "complaint":
+                complaint_id = str(payload.get("complaint_id") or payload.get("chunk_id"))
+                complaints.append({"id": complaint_id, "url": source_url, "title": title})
+                for key, label, _rel in relation_specs:
+                    value = metadata.get(key)
+                    if value:
+                        relation_rows[label].append({"id": complaint_id, "value": str(value)})
+            elif source_type in {"guidance", "regulation"}:
+                guidance_count += 1
+        counts = {
+            "complaints": len(complaints),
+            "guidance": guidance_count,
+            "relationships": sum(len(rows) for rows in relation_rows.values()),
+        }
         with self.driver.session() as session:
             session.run("CREATE CONSTRAINT complaint_id IF NOT EXISTS FOR (n:Complaint) REQUIRE n.complaint_id IS UNIQUE")
             session.run("CREATE CONSTRAINT source_url IF NOT EXISTS FOR (n:Source) REQUIRE n.url IS UNIQUE")
-            for payload in records:
-                source_type = payload.get("source_type")
-                metadata = payload.get("metadata") or {}
-                source_url = str(payload.get("source_url", ""))
-                title = str(payload.get("title", ""))
-                if source_type == "complaint":
-                    complaint_id = str(payload.get("complaint_id") or payload.get("chunk_id"))
-                    session.run(
-                        """MERGE (c:Complaint {complaint_id:$id})
-                        SET c.source_url=$url, c.title=$title
-                        MERGE (s:Source {url:$url}) SET s.title=$title, s.source_type='complaint'
-                        MERGE (c)-[:FROM_SOURCE]->(s)""",
-                        id=complaint_id, url=source_url, title=title,
-                    )
-                    for key, label, rel in (("product", "Product", "HAS_PRODUCT"), ("issue", "Issue", "HAS_ISSUE"), ("company", "Company", "INVOLVES_COMPANY"), ("company_response", "Response", "HAS_RESPONSE")):
-                        value = metadata.get(key)
-                        if value:
-                            session.run(
-                                f"""MATCH (c:Complaint {{complaint_id:$id}})
-                                MERGE (n:{label} {{name:$value}})
-                                MERGE (c)-[:{rel}]->(n)""",
-                                id=complaint_id, value=str(value),
-                            )
-                            counts["relationships"] += 1
-                    counts["complaints"] += 1
-                elif source_type in {"guidance", "regulation"}:
-                    session.run(
-                        """MERGE (s:Source {url:$url})
-                        SET s.title=$title, s.source_type=$source_type
-                        """,
-                        url=source_url, title=title, source_type=source_type,
-                    )
-                    counts["guidance"] += 1
+            session.run(
+                """UNWIND $rows AS row
+                MERGE (s:Source {url:row.url})
+                SET s.title=row.title, s.source_type=row.source_type""",
+                rows=sources,
+            )
+            session.run(
+                """UNWIND $rows AS row
+                MERGE (c:Complaint {complaint_id:row.id})
+                SET c.source_url=row.url, c.title=row.title
+                MERGE (s:Source {url:row.url})
+                SET s.title=row.title, s.source_type='complaint'
+                MERGE (c)-[:FROM_SOURCE]->(s)""",
+                rows=complaints,
+            )
+            for label, rows in relation_rows.items():
+                if not rows:
+                    continue
+                rel = next(spec[2] for spec in relation_specs if spec[1] == label)
+                session.run(
+                    f"""UNWIND $rows AS row
+                    MATCH (c:Complaint {{complaint_id:row.id}})
+                    MERGE (n:{label} {{name:row.value}})
+                    MERGE (c)-[:{rel}]->(n)""",
+                    rows=rows,
+                )
         return counts
 
     async def build_from_records(self, records: list[dict[str, Any]]) -> dict[str, Any]:

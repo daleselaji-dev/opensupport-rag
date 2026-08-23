@@ -47,6 +47,15 @@ Trace 增加 `contextual_backend` 和 `expand_parent`，并记录 chunk size、o
 还没有人工真值，因此 V0.5 先保持可选装配，下一步再在 `text_too_long`、跨语言和引用切片
 上做更细的对照。
 
+扩展官方快照后的复测（12,335 个主索引点、19,087 个 Contextual Chunk）：
+
+| 装配 | Hit@3 | MRR | p95 |
+|---|---:|---:|---:|
+| V0.3 Hybrid | 0.975 | 0.8792 | 142.82 ms |
+| V0.5 Contextual Hybrid | 0.975 | 0.8958 | 174.15 ms |
+
+旧 335-point 结果只作为历史对照；简历和发布材料应引用这组扩展快照指标。
+
 V0.5 的 11-case Answer/Safety Eval 也通过自动门：引用有效性 `1.0`、事实句覆盖率 `1.0`、
 拒答正确率 `1.0`、危险声明 `0`，生成 p95 `33124.52ms`。这只说明确定性安全回归没有退化，
 不替代人工 Citation Support 标注，也不代表 V0.5 已经达到线上 SLA。

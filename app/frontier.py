@@ -38,7 +38,7 @@ FRONTIER_MODULES = [
         "trace_added": ["contextualize_chunk", "retrieve_child", "expand_parent", "budget_context"],
         "status": "experimental",
         "implementation": "V0.5 deterministic contextual prefix + parent-child index 已实现；默认不覆盖旧索引",
-        "last_eval": "40-case draft：Hit@3 0.975；MRR 0.8958；p95 108.28ms",
+        "last_eval": "12,335-point snapshot：Hit@3 0.975；MRR 0.8958；p95 174.15ms；19,087 contextual chunks",
         "entry_gate": "长文档/孤立 Chunk 切片 Citation Support 改善，预处理成本可记录",
     },
     {
@@ -51,7 +51,7 @@ FRONTIER_MODULES = [
         "trace_added": ["rerank_candidates", "select_evidence"],
         "status": "experimental",
         "implementation": "已实现 llama.cpp 本地 Reranker 适配器；默认关闭，需同集 Eval 后才进入主链路",
-        "last_eval": "8-case seed：Hit@3 1.0；MRR 0.9375；p95 35168.92ms；RRF MRR 1.0/p95 81.38ms",
+        "last_eval": "消融：k=10 MRR 0.9375/p95 5346ms；k=20 MRR 1.0/p95 9908ms；V0.3 Hybrid MRR 1.0/p95 81ms，暂不晋级",
         "entry_gate": "候选集 Recall 已足够且排名问题在 Golden Set 中重复出现",
     },
     {

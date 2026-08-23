@@ -193,6 +193,7 @@ def load_credit_card_complaints_csv(path: str | bytes, limit: int, year: int) ->
 
 
 CFPB_MIRROR_URL = "https://huggingface.co/datasets/claritystorm/cfpb-consumer-complaints/resolve/main/sample_1000.csv"
+CFPB_BULK_URL = "https://files.consumerfinance.gov/ccdb/complaints.csv.zip"
 
 
 def normalize_mirror_row(row: dict[str, str], *, mirror_url: str = CFPB_MIRROR_URL) -> ComplaintRecord | None:
@@ -255,6 +256,35 @@ def load_cfpb_mirror_csv(path: str | bytes, limit: int, year: int | None = None,
             continue
         seen.add(record.complaint_id)
         records.append(record)
+        if len(records) >= limit:
+            break
+    return records
+
+
+def load_cfpb_official_bulk_csv(path: str | bytes, limit: int, year: int | None = None, product_filter: str = "any") -> list[ComplaintRecord]:
+    """Load the normalized bounded snapshot extracted from CFPB's official ZIP."""
+
+    if isinstance(path, bytes):
+        content = path
+    else:
+        from pathlib import Path
+        content = Path(path).read_bytes()
+    rows = csv.DictReader(StringIO(content.decode("utf-8-sig", errors="replace")))
+    records: list[ComplaintRecord] = []
+    seen: set[str] = set()
+    normalized_product = product_filter.strip().lower()
+    for row in rows:
+        received = (row.get("date_received") or "").strip()
+        if year is not None and received and not (date(year, 1, 1).isoformat() <= received <= date(year, 12, 31).isoformat()):
+            continue
+        product = (row.get("product") or "").strip()
+        if normalized_product not in {"any", "all"} and product.lower() != normalized_product:
+            continue
+        record = normalize_mirror_row(row, mirror_url=CFPB_BULK_URL)
+        if record is None or record.complaint_id in seen:
+            continue
+        seen.add(record.complaint_id)
+        records.append(record.model_copy(update={"identity_source": "cfpb_official_bulk_csv", "export_url": CFPB_BULK_URL}))
         if len(records) >= limit:
             break
     return records

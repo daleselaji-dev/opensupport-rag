@@ -13,6 +13,12 @@
 
 `scripts/release_check.py` 当前仍会因为 `draft_pending_two_person_human_review` 返回非零；这是刻意的质量门，不是脚本错误。不能在没有两位独立复核者的情况下把 Golden Draft 改成 approved。
 
+当前自动 Gate 实测：12,223 个唯一投诉 Chunk；Manifest/Qdrant `12,335/12,335`；V0.3
+Hybrid Hit@3 `0.975`、MRR `0.8792`；V0.5 Contextual Hit@3 `0.975`、MRR `0.8958`；完整
+50-case Answer Eval citation validity/coverage/refusal correctness 均为 `1.0`，危险声明和
+生成错误/超时均为 `0`；10 次稳定性 smoke 错误率 `0`；私有 PII `0`、未隔离 Prompt Injection `0`。
+这些数字仍不能替代人工 Citation Support。
+
 面试叙事必须按：
 
 ```text

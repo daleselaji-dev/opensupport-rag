@@ -10,6 +10,17 @@ reviewer_b 全部 50 case
 两位 reviewer 都覆盖全部 case → release_check golden_review=approved
 ```
 
+生成逐案例审阅表：
+
+```powershell
+$env:PYTHONPATH = "."
+.\.venv\Scripts\python.exe scripts\generate_golden_review_packet.py
+```
+
+输出 `evals/customer_support_benchmark_v0.3_review_form.md`。两位 reviewer 应分别打开
+原始 URL，判断来源是否真的支持问题、来源类型是否完整、拒答边界是否安全，再提交完整
+`case_id` 集合；不能只看自动 Hit@k 或 URL 是否相关。
+
 API：
 
 - `GET /api/eval/golden-review`

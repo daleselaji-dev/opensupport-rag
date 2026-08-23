@@ -36,6 +36,8 @@ async def run() -> dict[str, object]:
             "pii_findings": sum(bool([flag for flag in item["pii_flags"] if flag != "phone" or item.get("source_type") == "complaint"]) for item in findings),
             "public_contact_patterns": sum(bool(item["pii_flags"]) and item.get("source_type") in {"guidance", "regulation"} for item in findings),
             "prompt_injection_findings": sum(bool(item["prompt_injection_flags"]) for item in findings),
+            "isolated_prompt_injection_findings": sum(bool(item["prompt_injection_flags"]) and item.get("source_type") == "complaint" for item in findings),
+            "unisolated_prompt_injection_findings": sum(bool(item["prompt_injection_flags"]) and item.get("source_type") != "complaint" for item in findings),
             "items": findings[:200],
         }
         (ROOT / "reports").mkdir(exist_ok=True)

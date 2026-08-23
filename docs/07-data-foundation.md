@@ -34,6 +34,17 @@ discovered → downloaded → validated → parsed → normalized
 4. 官方页面 URL 有 fragment：fragment 不应导致同一页面生成两套身份。
 5. 解析失败的 PDF：进入隔离区，并在工作台显示失败原因。
 
+## 官方 bulk 快照与长批次施工
+
+官方全量 CSV ZIP 保存在本地 `data/raw/`（不提交 Git）。
+`scripts/prepare_official_bulk_snapshot.py` 从 ZIP 中提取限定数量的有公开叙述记录，保留
+真实 `Complaint ID` 和官方 bulk URL；`scripts/ingest_bulk_snapshot.py` 再按批次生成
+Embedding、写入 Dense/Sparse，并记录 `bulk_ingest_progress.json`。已验证 12,000 条新增记录、
+47 个批次、Manifest 与 Qdrant 12,335/12,335 一致。
+
+批次中断时不能把“请求提交成功”当作“索引完成”；应先查看进度和失败报告，再从稳定的
+`chunk_id` 继续。官方网页 403 时记录失败，不用镜像内容冒充官方指导。
+
 ## 当前真实阻塞
 
 本机最近一次真实 20 条导入同时遇到 CFPB JSON 与 CSV endpoint 的 `403
