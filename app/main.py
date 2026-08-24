@@ -155,6 +155,66 @@ async def agent_status():
     }
 
 
+@app.get("/api/stage/{stage}/preview")
+async def stage_preview(stage: str):
+    """Return an inspectable V0.7–V1 stage result for the workbench."""
+
+    allowed = {"v0_7", "v0_8", "v0_9", "v1_0"}
+    if stage not in allowed:
+        raise HTTPException(status_code=400, detail="只支持 v0_7、v0_8、v0_9、v1_0 阶段预览。")
+    now = time.perf_counter()
+    trace: list[dict[str, object]] = []
+
+    def event(name: str, summary: str, status: str = "completed", details: dict[str, object] | None = None) -> None:
+        trace.append({"step": len(trace) + 1, "name": name, "status": status, "duration_ms": round((time.perf_counter() - now) * 1000, 2), "summary": summary, "details": details or {}})
+
+    if stage == "v0_7":
+        event("graph_route", "选择 Graph-Augmented Support Intelligence 路由", details={"profile": "neo4j", "source_of_truth": "CFPB structured fields"})
+        issues = await app.state.graph.query("top_issues", 10)
+        event("graph_query_top_issues", f"返回 {len(issues)} 个高频 Issue", details={"query_kind": "top_issues", "rows": len(issues)})
+        products = await app.state.graph.query("top_products", 10)
+        event("graph_query_top_products", f"返回 {len(products)} 个 Product 聚合", details={"query_kind": "top_products", "rows": len(products)})
+        event("graph_evidence", "Graph 结果保留为聚合证据，不作责任或违法结论", details={"source_backed": True, "llm_derived_relations": False})
+        return {"stage": stage, "status": "ready", "summary": "Graph profile 已运行；结果来自结构化 CFPB 字段。", "result": {"top_issues": issues, "top_products": products}, "trace": trace}
+
+    if stage == "v0_8":
+        collection = get_settings().pdf_collection_name
+        ready = await app.state.rag.qdrant.collection_exists(collection)
+        count = await app.state.rag.count(collection) if ready else 0
+        event("pdf_backend", "检查页级 PDF 文本基线集合", details={"collection": collection, "ready": ready, "pages": count})
+        if ready:
+            event("pdf_page_evidence", f"发现 {count} 个带页码证据页", details={"modality": "pdf_text_baseline"})
+            status = "ready"
+            summary = "PDF 页级文本基线可预览；视觉区域检索仍需独立数据集。"
+        else:
+            event("pdf_backend", "尚未导入本地 PDF，停止而不伪造视觉结果", "failed", {"next_action": "将官方 PDF 放入 data/raw 后调用 /api/index/build-pdf-pages"})
+            status = "blocked"
+            summary = "PDF 页级基线尚未就绪；当前官方 PDF 下载受到外部 403 限制。"
+        return {"stage": stage, "status": status, "summary": summary, "result": {"collection": collection, "pages": count}, "trace": trace}
+
+    if stage == "v0_9":
+        health = await app.state.rag.health()
+        health["storage"] = await app.state.storage.health()
+        event("operations_health", "读取 RAG、模型、存储和索引状态", details={"qdrant": health.get("qdrant"), "lm_studio": health.get("lm_studio"), "storage": health.get("storage")})
+        alias = app.state.rag.index_registry.read()
+        event("index_alias", "读取当前蓝绿索引 Alias", details=alias)
+        event("resilience_controls", "确认 timeout、Semaphore、缓存、限流和回滚边界", details={"cache_enabled": get_settings().cache_enabled, "rate_limit_per_minute": get_settings().rate_limit_per_minute, "chat_timeout_s": get_settings().chat_timeout_s})
+        return {"stage": stage, "status": "ready", "summary": "Production RAG 运维层已运行，当前 Alias 可回滚。", "result": {"health": health, "alias": alias}, "trace": trace}
+
+    agent = await agent_status()
+    agent_report: dict[str, object] = {}
+    agent_report_path = ROOT / "reports" / "agent_eval_latest.json"
+    if agent_report_path.exists():
+        try:
+            agent_report = json.loads(agent_report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            agent_report = {"status": "unreadable"}
+    event("agent_preflight", "读取 V1 受控 Agent 预验收报告", details={"routing_accuracy": agent_report.get("routing_accuracy"), "dangerous_action_count": agent_report.get("dangerous_action_count")})
+    event("tool_allowlist", "只允许检索和本地工单草稿工具", details={"allowed_tools": agent["allowed_tools"], "forbidden_actions": agent["forbidden_actions"]})
+    event("human_approval_gate", "草稿必须停在人工批准门", details={"approval_required": True, "agent_enabled": agent["status"] == "available"})
+    return {"stage": stage, "status": "preflight_passed" if agent_report.get("routing_accuracy") == 1.0 and agent_report.get("dangerous_action_count") == 0 else "locked", "summary": "V1 控制器已预验收；公共 Agent API 仍由发布门锁定。", "result": {"status": agent, "eval": agent_report}, "trace": trace}
+
+
 @app.post("/api/agent/run", response_model=AgentResponse)
 async def agent_run(request: AgentRequest):
     if not get_settings().agent_enabled:
@@ -378,7 +438,8 @@ async def answer_eval_run(
 
 @app.get("/api/eval/answer-last")
 async def answer_eval_last(benchmark_version: str = Query(default="v0_2", pattern="^v0_[23]$")):
-    return load_last_answer_eval(benchmark_version) or (load_last_answer_eval("v0_3") if benchmark_version == "v0_2" else None) or {"status": "not_run", "message": "尚未运行回答/安全 Eval。"}
+    latest = (load_last_answer_eval("v0_3") or load_last_answer_eval("v0_2")) if benchmark_version == "v0_2" else load_last_answer_eval(benchmark_version)
+    return latest or {"status": "not_run", "message": "尚未运行回答/安全 Eval。"}
 
 
 async def _complete_ingest(

@@ -88,6 +88,18 @@ def evaluate_answer(case: dict[str, Any], answer: str, sources: list[Any], laten
         citation_coverage=coverage,
         refusal_signal=refusal,
         forbidden_claims_found=forbidden,
+        sources=[
+            {
+                "citation": source.citation,
+                "source_type": source.source_type,
+                "authority_level": source.authority_level,
+                "title": source.title,
+                "source_url": source.source_url,
+                "score": source.score,
+                "text": source.text[:700],
+            }
+            for source in sources
+        ],
         passed=passed,
         trace=trace,
     )

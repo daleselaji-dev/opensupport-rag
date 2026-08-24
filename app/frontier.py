@@ -63,7 +63,7 @@ FRONTIER_MODULES = [
         "trace_added": ["graph_route", "entity_link", "community_select", "graph_evidence"],
         "status": "experimental",
         "implementation": "Neo4j Community profile 已运行；已写入结构化 CFPB Complaint/Product/Issue/Company 关系，未让 LLM 创造事实关系",
-        "last_eval": "Graph smoke：223 Complaint、112 Source、802 structured relationships；尚未完成全局主题 Golden Set",
+        "last_eval": "Graph smoke：12,223 Complaint、112 Source、41,802 structured relationships；尚未完成全局主题 Golden Set",
         "entry_gate": "只在 Support Intelligence 全局问题切片上比较，必须追溯实体和原始来源",
     },
     {

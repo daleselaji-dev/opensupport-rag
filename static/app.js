@@ -40,6 +40,7 @@ const buildContextualButton = document.querySelector('#build-contextual');
 const contextualStatus = document.querySelector('#contextual-status');
 const reviewStatus = document.querySelector('#review-status');
 const refreshReview = document.querySelector('#refresh-review');
+const stagePreview = document.querySelector('#stage-preview');
 let manualVersionSelection = false;
 
 if (agentForm) {
@@ -83,6 +84,32 @@ async function loadGoldenReview() {
   }
 }
 if (refreshReview) refreshReview.addEventListener('click', loadGoldenReview);
+
+function renderStagePreview(payload) {
+  if (!stagePreview) return;
+  const trace = (payload?.trace || []).map((event) => `<div class="stage-trace-row ${text(event.status)}"><span>${text(event.step)}</span><b>${text(event.name)}</b><span>${text(event.summary)}</span><small>${text(event.duration_ms)} ms</small></div>`).join('');
+  stagePreview.innerHTML = `
+    <div class="stage-preview-head"><strong>${text(payload?.stage || '—')}</strong><span class="stage-status-${text(payload?.status || 'unknown')}">${text(payload?.status || 'unknown')}</span></div>
+    <p>${text(payload?.summary || '')}</p>
+    <details open><summary>Stage Trace (${text(payload?.trace?.length || 0)} steps)</summary><div class="stage-trace-list">${trace || '<p class="hint">没有 Trace。</p>'}</div></details>
+    <details><summary>Stage Result</summary><pre class="stage-result-json">${text(JSON.stringify(payload?.result || {}, null, 2))}</pre></details>`;
+}
+
+async function runStagePreview(stage) {
+  if (!stagePreview) return;
+  stagePreview.innerHTML = `<p class="hint">正在运行 ${text(stage)} Stage preview…</p>`;
+  document.querySelectorAll('.stage-button').forEach((button) => button.classList.toggle('selected', button.dataset.stage === stage));
+  try {
+    const response = await fetch(`/api/stage/${encodeURIComponent(stage)}/preview`);
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.detail || 'Stage preview 失败');
+    renderStagePreview(body);
+  } catch (error) {
+    stagePreview.innerHTML = `<p class="error">Stage preview 失败：${text(error.message)}</p>`;
+  }
+}
+
+document.querySelectorAll('.stage-button').forEach((button) => button.addEventListener('click', () => runStagePreview(button.dataset.stage)));
 
 const versionCatalog = {
   v0_1: {label: 'V0.1 Dense', delta: 'V0.1 只有 Qwen Embedding + Qdrant Dense + 双证据；没有 BM25、RRF、Intent 或 Metadata 过滤。', diagram: 'v0_1'},
@@ -315,7 +342,12 @@ function renderAnswerEval(summary) {
     return;
   }
   const gates = (summary.gates || []).map((gate) => `<article class="gate ${gate.passed ? 'passed' : 'failed'}"><div><strong>${text(gate.label)}</strong><span>${gate.passed ? '通过' : '未通过'}</span></div><p>实际 <b>${text(gate.actual)}</b> · 目标 <b>${text(gate.target)}</b></p><small>${text(gate.note)}</small></article>`).join('');
-  answerEvalSummary.innerHTML = `<div class="eval-overview"><strong class="eval-result ${summary.overall_passed ? 'passed' : 'failed'}">${summary.overall_passed ? 'PASS' : 'FAIL'}</strong><span>${text(summary.benchmark_version)} · ${text(summary.case_count)} cases · p95 ${text(summary.metrics?.p95_ms)} ms</span></div><div class="gate-grid">${gates}</div><p class="hint">引用覆盖 ${text(summary.metrics?.citation_coverage)} · 拒答正确率 ${text(summary.metrics?.refusal_correctness)} · 危险声明 ${text(summary.metrics?.forbidden_claim_count)}</p>`;
+  const cases = (summary.cases || []).map((item) => {
+    const sourceCards = (item.sources || []).map((source) => `<article class="answer-source-card"><div><strong>${text(source.citation)}</strong><span>${text(source.source_type)} · ${text(source.authority_level)} · score ${text(source.score)}</span></div><b>${text(source.title)}</b><small>${text(source.source_url)}</small><p>${text(source.text)}</p></article>`).join('');
+    const traceNames = (item.trace || []).map((event) => `${event.step}. ${event.name} (${event.status})`).join(' → ');
+    return `<details class="answer-case ${item.passed ? 'answer-case-pass' : 'answer-case-fail'}"><summary><strong>${text(item.case_id)}</strong><span>${item.passed ? 'PASS' : 'FAIL'} · ${text(item.expected_action)} · ${text(item.latency_ms)} ms</span></summary><div class="answer-case-body"><p class="answer-question">${text(item.question)}</p><pre class="answer-text">${text(item.answer)}</pre><div class="answer-source-grid">${sourceCards || '<p class="hint">本条没有可展示的证据卡片。</p>'}</div><p class="answer-trace-line"><b>Trace：</b>${text(traceNames)}</p><p class="hint">citation_valid=${text(item.citation_valid)} · coverage=${text(item.citation_coverage)} · refusal=${text(item.refusal_signal)} · forbidden=${text((item.forbidden_claims_found || []).join(', ') || 'none')}</p></div></details>`;
+  }).join('');
+  answerEvalSummary.innerHTML = `<div class="eval-overview"><strong class="eval-result ${summary.overall_passed ? 'passed' : 'failed'}">${summary.overall_passed ? 'PASS' : 'FAIL'}</strong><span>${text(summary.benchmark_version)} · ${text(summary.case_count)} cases · p95 ${text(summary.metrics?.p95_ms)} ms</span></div><div class="gate-grid">${gates}</div><p class="hint">引用覆盖 ${text(summary.metrics?.citation_coverage)} · 拒答正确率 ${text(summary.metrics?.refusal_correctness)} · 危险声明 ${text(summary.metrics?.forbidden_claim_count)} · 生成错误/超时 ${text(summary.metrics?.answer_error_count)}</p><details class="eval-details answer-cases-details"><summary>预览 ${text(summary.case_count)} 条生成回答、证据卡片和完整 Trace</summary><div class="answer-case-list">${cases}</div></details>`;
 }
 
 function statusPill(value) {

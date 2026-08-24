@@ -27,6 +27,7 @@ async def main() -> None:
     report["manifest_consistent"] = True
     report.setdefault("stage_counts", {})["indexed"] = total
     report.setdefault("stage_counts", {})["active"] = total
+    report.setdefault("stage_counts", {})["embedded"] = total
     quality_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     manifest_path = data_dir / "ingest_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}

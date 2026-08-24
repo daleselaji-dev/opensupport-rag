@@ -279,6 +279,7 @@ class AnswerEvalCaseResult(BaseModel):
     citation_coverage: float = 0.0
     refusal_signal: bool = False
     forbidden_claims_found: list[str] = Field(default_factory=list)
+    sources: list[dict[str, Any]] = Field(default_factory=list)
     passed: bool
     trace: list[TraceEvent] = Field(default_factory=list)
 

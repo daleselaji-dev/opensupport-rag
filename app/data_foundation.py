@@ -204,6 +204,7 @@ def finalize_quality_report(
     manifest_consistent: bool | None = None,
 ) -> DataQualityReport:
     stages = dict(report.stage_counts)
+    stages["embedded"] = indexed_documents
     stages["indexed"] = indexed_documents
     stages["active"] = indexed_documents
     updates: dict[str, object] = {
