@@ -50,6 +50,7 @@ def build_lifecycle(
     reranker_state = (health.get("reranker") or {}).get("state", "disabled")
     contextual_ready = bool(health.get("contextual_ready"))
     graph_state = (health.get("graph") or {}).get("state", "locked")
+    pdf_ready = bool(health.get("pdf_ready"))
     contextual_eval = _read_report("eval_latest_v0_5_hybrid.json")
     corrective_eval = _read_report("eval_latest_v0_6_hybrid.json")
     reranker_ablation = _read_report("reranker_ablation_latest.json")
@@ -242,12 +243,12 @@ def build_lifecycle(
             {
                 "id": "v0.8",
                 "name": "Multimodal RAG",
-                "status": "in_progress",
-                "status_label": "页级文本基线已实现 · 视觉数据源待接入",
+                "status": "completed" if pdf_ready else "in_progress",
+                "status_label": "页级文本基线已运行 · 视觉数据源仍为实验" if pdf_ready else "页级文本基线已实现 · 视觉数据源待接入",
                 "scope": "页面级检索 · 表格/图表 · OCR/视觉证据",
-                "evidence": "pypdf 页级索引代码已实现；CFPB PDF CDN 当前返回 403，尚未伪造视觉检索结果",
+                "evidence": (f"pypdf 页级索引已运行；PDF pages={health.get('pdf_indexed_documents', 0)}；视觉区域检索仍未进入默认链路" if pdf_ready else "pypdf 页级索引代码已实现；当前 PDF 数据源尚未就绪，尚未伪造视觉检索结果"),
                 "gate": "页面 Recall 和区域引用可复现",
-                "next_action": "获得可复现的官方 PDF 快照后，建立页面级 Golden Set，再比较 Docling/MinerU/视觉检索",
+                "next_action": "建立页面级 Golden Set，再比较 Docling/MinerU/视觉检索；文本页基线不等于视觉 Recall",
             },
             {
                 "id": "v0.9",
