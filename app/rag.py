@@ -1315,6 +1315,9 @@ Answer to edit:
             status["contextual_indexed_documents"] = await self.count(self.settings.contextual_collection_name)
             status["contextual_sparse_indexed_documents"] = await self.count(self.settings.contextual_sparse_collection_name)
             status["contextual_ready"] = status["contextual_indexed_documents"] > 0 and status["contextual_sparse_indexed_documents"] > 0
+            status["pdf_indexed_documents"] = await self.count(self.settings.pdf_collection_name)
+            status["pdf_sparse_indexed_documents"] = await self.count(self.settings.pdf_sparse_collection_name)
+            status["pdf_ready"] = status["pdf_indexed_documents"] > 0 and status["pdf_sparse_indexed_documents"] > 0
             status["native_sparse"] = await self.sparse_collection_ready()
         except Exception:
             status["qdrant"] = "offline"
@@ -1323,6 +1326,9 @@ Answer to edit:
             status["contextual_indexed_documents"] = 0
             status["contextual_sparse_indexed_documents"] = 0
             status["contextual_ready"] = False
+            status["pdf_indexed_documents"] = 0
+            status["pdf_sparse_indexed_documents"] = 0
+            status["pdf_ready"] = False
             status["native_sparse"] = False
         try:
             models = await self.chat.models.list()

@@ -75,7 +75,7 @@ FRONTIER_MODULES = [
         "trace_added": ["detect_modality", "render_pdf", "visual_retrieve", "extract_region"],
         "status": "experimental",
         "implementation": "V0.8 页级 pypdf 文本基线已实现，保留 page metadata；Docling/MinerU/视觉区域检索仍未进入默认链路",
-        "last_eval": "官方 CFPB PDF CDN 当前 403；因此不宣称视觉表格/图表 Recall",
+        "last_eval": "官方 CFPB 2025 Consumer Response Annual Report 已导入 96 页文本基线；视觉表格/图表 Recall 仍未宣称",
         "entry_gate": "页面级 Recall 与真实表格/图表问题的引用正确性可复现",
     },
     {
