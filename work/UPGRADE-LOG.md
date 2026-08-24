@@ -74,6 +74,12 @@
 - 当前显示：V0.5 同集 Eval 已通过但仍待人工 Citation Support；V0.6 受控一次纠错已完成；V0.7 Graph profile 已运行但等待全局问题集；V0.8 页级 PDF 基线已实现但官方 PDF CDN 403；V0.9 运维演练已通过但 release gate 仍被 Golden Review 阻塞；V1 Agent preflight routing accuracy=1.0、危险动作=0，但默认 API 仍锁定。
 - 决定：状态只能反映证据，不能把自动分数或隔离预检当作正式发布批准。
 
+## Answer UX 诊断（2026-08-24）
+
+- 最新 50-case Answer Eval 的高风险 10/10 均由 `request_safety_gate` 正确拒答；可回答问题中约 38/40 进入 `extractive_grounded_fallback`。
+- 这两类不能混为“安全边界误杀”：前者是应有的风险拦截，后者是 R1 引用覆盖不足后的保守降级。
+- fallback 用户文本已改为基于官方/投诉证据的可读摘要，Trace 仍标记 `extractive_grounded_fallback`、`needs_human_review=true`；下一阶段应优化答案生成和人工升级率，而不是关闭安全门。
+
 ## 生产数据快照与安全回归（2026-08-24）
 
 - 数据升级：从 CFPB 官方 `complaints.csv.zip` 下载全量快照（官方 ZIP 约 1.35GB），抽取 12,000 条有公开叙述且保留真实 Complaint ID 的记录；47 个 Embedding/写入批次完成，新增 12,000 个文档，主 Dense/Sparse 索引达到 12,335 points，投诉 Chunk 达到 12,223，Manifest 一致。

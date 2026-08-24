@@ -16,6 +16,7 @@ Cross-Encoder，通过 Trace、确定性 Eval、安全门、缓存、Alias 回�
 - 检索：V0.3 Hybrid 在 40 条可回答案例上 Hit@3=`0.975`、MRR=`0.8792`、p95=`142.82ms`；V0.5 Contextual Hit@3=`0.975`、MRR=`0.8958`、p95=`174.15ms`。
 - 精排权衡：本地 Qwen3-Reranker 0.6B 在冻结 seed 上 k=20 MRR=`1.0`，但 p95=`9.91s`，相对 Hybrid 基线约 `81ms`，因此保留为实验组件而不进入默认链路。
 - 回答与安全：完整 50-case Eval 的 citation validity、citation coverage、refusal correctness 均 `1.0`；forbidden claims=`0`、生成错误/超时=`0`、最新 p95=`14.54s`。
+- 重要限制：40 条可回答问题中当前约 38 条使用 grounded fallback；这不是高风险拒答，而是本地 R1 引用覆盖不足后的安全降级。简历不应隐藏该指标，面试时应说明“安全正确，但生成体验仍有优化空间”。
 - 生产硬化：Redis Embedding Cache、模型 timeout/Semaphore、429 限流、Celery 批次摄取、OpenTelemetry/Prometheus、蓝绿 Alias 回滚和 10 次 stability smoke（错误率 `0`）。
 - 安全：12,335 points 扫描私有 PII=`0`、未隔离 Prompt Injection=`0`；2 条投诉注入文本被标记为不可信并 fail-closed。
 - Graph/V1：Neo4j 12,223 Complaint、41,802 结构化关系；V1 Agent 6/6 preflight、routing accuracy=`1.0`、危险动作=`0`，默认 API 仍锁定。

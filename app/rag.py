@@ -1060,22 +1060,29 @@ Answer to edit:
 
     @staticmethod
     def build_grounded_fallback_answer(question: str, sources: list[SourceHit]) -> str:
-        """Build a citation-complete extractive fallback when the LLM fails its gate."""
+        """Build a useful citation-complete answer when the LLM fails its gate.
+
+        The trace still records ``extractive_grounded_fallback`` and keeps the
+        human-review flag, but the user receives supported evidence rather than
+        an opaque model-error sentence.
+        """
 
         official = [source for source in sources if source.authority_level == "official"]
         evidence = official or sources
-        lines = ["当前模型回答未完全通过生成质量校验，以下仅列出已召回证据能够直接支持的内容："]
+        lines = ["根据当前召回的公开证据，客服可以先核对以下信息："]
         for source in evidence[:3]:
             title_normalized = source.title.strip().lower()
             fragments = [
                 fragment.strip(" -•\t")
                 for fragment in re.split(r"[\n。！？.!?]+", source.text)
-                if len(fragment.strip()) >= 20 and fragment.strip().lower() != title_normalized
+                if len(fragment.strip()) >= 20
+                and fragment.strip().lower() != title_normalized
+                and not any(marker in fragment.lower() for marker in ("source type:", "authority:", "parent_title:", "contextual_prefix:"))
             ]
             excerpt = fragments[0][:320] if fragments else source.text.replace("\n", " ")[:320]
             label = "官方资料" if source.authority_level == "official" else "消费者公开主张（未经核实）"
             lines.append(f"- {label}：{excerpt} [{source.citation}]")
-        lines.append("该内容不能直接作为客服回复；请人工复核原始页面和账户记录。")
+        lines.append("这些内容可用于客服初步核对，但账户状态、退款结果和责任判断仍需人工复核原始页面。")
         lines.append("这不是法律、金融或账户处理决定。")
         return "\n".join(lines)
 

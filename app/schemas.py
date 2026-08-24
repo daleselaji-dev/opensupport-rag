@@ -280,6 +280,8 @@ class AnswerEvalCaseResult(BaseModel):
     refusal_signal: bool = False
     forbidden_claims_found: list[str] = Field(default_factory=list)
     sources: list[dict[str, Any]] = Field(default_factory=list)
+    fallback_mode: str | None = None
+    needs_human_review: bool = False
     passed: bool
     trace: list[TraceEvent] = Field(default_factory=list)
 

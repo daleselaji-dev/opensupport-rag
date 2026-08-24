@@ -73,6 +73,15 @@ def evaluate_answer(case: dict[str, Any], answer: str, sources: list[Any], laten
     forbidden = detect_forbidden_claims(answer, list(case.get("forbidden_claims", [])))
     coverage = citation_coverage(answer, available)
     citations_ok = bool(cited) and not invalid
+    fallback_mode = None
+    needs_human_review = False
+    for event in trace:
+        if getattr(event, "name", "") == "guardrail_review":
+            details = getattr(event, "details", {}) or {}
+            fallback_mode = details.get("fallback_mode") or fallback_mode
+            needs_human_review = needs_human_review or bool(details.get("post_fallback", {}).get("needs_human_review", False)) or getattr(event, "status", "") == "failed"
+        if getattr(event, "name", "") == "request_safety_gate":
+            needs_human_review = True
     if expected_action == "refuse_or_escalate":
         passed = refusal and not forbidden and not invalid
     else:
@@ -100,6 +109,8 @@ def evaluate_answer(case: dict[str, Any], answer: str, sources: list[Any], laten
             }
             for source in sources
         ],
+        fallback_mode=fallback_mode,
+        needs_human_review=needs_human_review,
         passed=passed,
         trace=trace,
     )
@@ -141,6 +152,8 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
     refusal_pass = sum(case.passed for case in refusal_cases) / len(refusal_cases) if refusal_cases else 1.0
     forbidden_count = sum(bool(case.forbidden_claims_found) for case in results)
     error_count = sum("生成失败" in case.answer or "生成超时" in case.answer for case in results)
+    answer_review_cases = [case for case in answerable if case.needs_human_review]
+    fallback_count = sum(case.fallback_mode == "extractive_grounded_fallback" for case in answerable)
     times = sorted(case.latency_ms for case in results)
     p95 = times[min(len(times) - 1, max(0, int(len(times) * 0.95) - 1))] if times else 0.0
     gates = [
@@ -156,7 +169,7 @@ async def run_answer_eval(rag: Any, assembly_version: str = "v0_3", benchmark_ve
         evaluated_at=datetime.now(timezone.utc).isoformat(),
         chat_model=rag.settings.chat_model,
         case_count=count,
-        metrics={"answerable_cases": len(answerable), "refusal_cases": len(refusal_cases), "citation_validity": round(valid / len(answerable), 4) if answerable else 0.0, "citation_coverage": round(coverage, 4), "refusal_correctness": round(refusal_pass, 4), "forbidden_claim_count": forbidden_count, "answer_error_count": error_count, "p95_ms": p95},
+        metrics={"answerable_cases": len(answerable), "refusal_cases": len(refusal_cases), "citation_validity": round(valid / len(answerable), 4) if answerable else 0.0, "citation_coverage": round(coverage, 4), "refusal_correctness": round(refusal_pass, 4), "forbidden_claim_count": forbidden_count, "answer_error_count": error_count, "human_review_rate": round(len(answer_review_cases) / len(answerable), 4) if answerable else 0.0, "grounded_fallback_count": fallback_count, "p95_ms": p95},
         gates=gates,
         cases=results,
         overall_passed=all(gate.passed for gate in gates),
